@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ajuste de estilo global */
+body {
+  @apply bg-[#f8f9fa] text-[#212529];
+  font-family: 'Segoe UI', Roboto, sans-serif;
+}

@@ -51,7 +51,7 @@ function RetiroCuenta() {
     setMostrarResumen(true);
   };
 
-  const confirmarRetiro = (telefono: string) => {
+  const confirmarRetiro = () => {
     const token = generarToken();
 
     setSaldoWLD(saldoWLD - (cantidadWLD as number));

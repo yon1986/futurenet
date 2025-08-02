@@ -2,8 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Bienvenida from "./pages/Bienvenida";
 import Opciones from "./pages/Opciones";
-import RetiroCuenta from "./pages/RetiroCuenta";
 import RetiroCajero from "./pages/RetiroCajero";
+import RetiroCuenta from "./pages/RetiroCuenta";
 import Historial from "./pages/Historial";
 import { UserProvider } from "./context/UserContext";
 
@@ -16,8 +16,8 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/bienvenida" element={<Bienvenida />} />
             <Route path="/opciones" element={<Opciones />} />
-            <Route path="/retiro-cuenta" element={<RetiroCuenta />} />
             <Route path="/retiro-cajero" element={<RetiroCajero />} />
+            <Route path="/retiro-cuenta" element={<RetiroCuenta />} />
             <Route path="/historial" element={<Historial />} />
           </Routes>
         </UserProvider>

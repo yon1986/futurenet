@@ -1,22 +1,28 @@
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
+import { useEffect } from "react";
 
 function Opciones() {
   const navigate = useNavigate();
+  const { usuarioID } = useUser();
+
+  // Si no hay usuarioID, regresamos al login
+  useEffect(() => {
+    if (!usuarioID) {
+      navigate("/");
+    }
+  }, [usuarioID, navigate]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-gradient-to-b from-blue-50 to-blue-100">
-      {/* Título */}
-      <h1 className="text-3xl font-bold mb-3 text-gray-800 text-center">
+      <h1 className="text-2xl font-bold mb-2 text-center text-gray-800">
         Bienvenido a <span className="text-blue-600">Futurenet</span>
       </h1>
-
-      {/* Subtítulo */}
-      <p className="text-gray-600 mb-6 text-center">
+      <p className="text-gray-600 mb-8 text-center">
         Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
       </p>
 
-      {/* Pregunta original */}
-      <h2 className="text-lg font-semibold text-gray-700 mb-6 text-center">
+      <h2 className="text-lg font-semibold mb-6 text-center text-gray-800">
         ¿Cómo deseas cambiar tus <span className="text-blue-600">Worldcoin</span>?
       </h2>
 

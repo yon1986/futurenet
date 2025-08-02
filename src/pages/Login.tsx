@@ -1,9 +1,24 @@
 import { useNavigate } from "react-router-dom";
+import { IDKitWidget, VerificationResponse } from "@worldcoin/idkit";
+import { useUser } from "../context/UserContext";
 
 function Login() {
   const navigate = useNavigate();
+  const { setUsuarioID } = useUser();
 
-  const handleLogin = () => {
+  const handleVerify = (response: VerificationResponse) => {
+    console.log("Usuario verificado:", response);
+
+    // Guardamos el nullifier_hash del usuario
+    setUsuarioID(response.nullifier_hash);
+
+    // Navegamos a la pantalla de bienvenida
+    navigate("/bienvenida");
+  };
+
+  // Función demo para simular usuario
+  const handleDemo = () => {
+    setUsuarioID("usuario_demo_nullifier_hash");
     navigate("/bienvenida");
   };
 
@@ -16,11 +31,30 @@ function Login() {
         <p className="text-gray-600 mb-6">
           Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
         </p>
-        <button
-          onClick={handleLogin}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-lg font-semibold shadow-lg transition"
+
+        {/* Botón de World ID */}
+        <IDKitWidget
+          action="futurenet-login"
+          signal="login"
+          onSuccess={handleVerify}
+          app_id="TU_APP_ID_DE_WORLDCOIN" // 👈 Reemplázalo con tu App ID real
         >
-          🔐 Iniciar con World ID
+          {({ open }) => (
+            <button
+              onClick={open}
+              className="w-full py-4 mb-4 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-lg font-semibold shadow-lg transition"
+            >
+              🔐 Iniciar con World ID
+            </button>
+          )}
+        </IDKitWidget>
+
+        {/* Botón demo solo para desarrollo */}
+        <button
+          onClick={handleDemo}
+          className="w-full py-3 rounded-xl bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold shadow-md transition"
+        >
+          🚀 Continuar en modo demo
         </button>
       </div>
     </div>

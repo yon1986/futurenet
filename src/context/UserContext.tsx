@@ -5,16 +5,17 @@ interface Transaccion {
   tipo: "cajero" | "cuenta";
   token: string;
   monto: number;
+  wldCambiados: number | string;
   estado: "pendiente" | "completado";
 }
 
 interface UserContextType {
+  usuarioID: string | null;
+  setUsuarioID: (value: string | null) => void;
   saldoWLD: number;
   setSaldoWLD: (value: number) => void;
   precioWLD: number;
   setPrecioWLD: (value: number) => void;
-  telefono: string;
-  setTelefono: (value: string) => void;
   transacciones: Transaccion[];
   setTransacciones: (t: Transaccion[]) => void;
 }
@@ -22,20 +23,20 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [usuarioID, setUsuarioID] = useState<string | null>(null); // nullifier_hash
   const [saldoWLD, setSaldoWLD] = useState<number>(10);
   const [precioWLD, setPrecioWLD] = useState<number>(25);
-  const [telefono, setTelefono] = useState<string>("");
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
 
   return (
     <UserContext.Provider
       value={{
+        usuarioID,
+        setUsuarioID,
         saldoWLD,
         setSaldoWLD,
         precioWLD,
         setPrecioWLD,
-        telefono,
-        setTelefono,
         transacciones,
         setTransacciones,
       }}

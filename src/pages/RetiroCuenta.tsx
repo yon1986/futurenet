@@ -1,16 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
 
 function RetiroCuenta() {
   const navigate = useNavigate();
   const {
+    usuarioID,
     saldoWLD,
     setSaldoWLD,
     precioWLD,
     transacciones,
     setTransacciones,
   } = useUser();
+
+  // 🔒 Bloquear acceso si no hay login
+  useEffect(() => {
+    if (!usuarioID) {
+      navigate("/");
+    }
+  }, [usuarioID, navigate]);
 
   const [nombre, setNombre] = useState("");
   const [banco, setBanco] = useState("");
@@ -61,7 +69,7 @@ function RetiroCuenta() {
         tipo: "cuenta",
         token,
         monto: total,
-        wldCambiados: cantidadWLD, // Guardamos el valor real
+        wldCambiados: cantidadWLD,
         estado: "pendiente",
       },
     ]);

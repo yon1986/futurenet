@@ -1,11 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
 
 function RetiroCajero() {
   const navigate = useNavigate();
-  const { saldoWLD, setSaldoWLD, precioWLD, transacciones, setTransacciones } =
-    useUser();
+  const { usuarioID, saldoWLD, setSaldoWLD, precioWLD, transacciones, setTransacciones } = useUser();
+
+  // 🔒 Bloquear acceso si no hay login
+  useEffect(() => {
+    if (!usuarioID) {
+      navigate("/");
+    }
+  }, [usuarioID, navigate]);
 
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [telefono, setTelefono] = useState("");
@@ -56,7 +62,7 @@ function RetiroCajero() {
         tipo: "cajero",
         token,
         monto: total,
-        wldCambiados: cantidadWLD, // 👈 Guardamos la cantidad exacta
+        wldCambiados: cantidadWLD,
         estado: "pendiente",
       },
     ]);

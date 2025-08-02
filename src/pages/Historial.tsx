@@ -1,9 +1,17 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useUser } from "../context/UserContext";
 
 function Historial() {
   const navigate = useNavigate();
-  const { transacciones } = useUser();
+  const { usuarioID, transacciones } = useUser();
+
+  // 🔒 Bloquear acceso si no hay login
+  useEffect(() => {
+    if (!usuarioID) {
+      navigate("/");
+    }
+  }, [usuarioID, navigate]);
 
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-white to-gray-100">
@@ -33,7 +41,7 @@ function Historial() {
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
-                  {t.wldCambiados ?? "N/A"} WLD
+                  <strong>{t.wldCambiados}</strong> WLD
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}

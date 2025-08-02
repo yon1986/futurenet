@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import ResumenRetiro from "../components/ResumenRetiro";
 import { useUser } from "../context/UserContext";
 
 function RetiroCuenta() {
@@ -62,6 +61,7 @@ function RetiroCuenta() {
         tipo: "cuenta",
         token,
         monto: total,
+        wldCambiados: cantidadWLD, // Guardamos el valor real
         estado: "pendiente",
       },
     ]);
@@ -88,12 +88,27 @@ function RetiroCuenta() {
       </p>
 
       {mostrarResumen ? (
-        <ResumenRetiro
-          monto={montoQuetzales}
-          total={total}
-          onConfirmar={confirmarRetiro}
-          onCancelar={() => setMostrarResumen(false)}
-        />
+        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
+          <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
+          <p className="mb-4">
+            Total a recibir (comisión 15% incluido):{" "}
+            <strong>Q{total.toFixed(2)}</strong>
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => setMostrarResumen(false)}
+              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmarRetiro}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
       ) : (
         <form
           onSubmit={handleSubmit}

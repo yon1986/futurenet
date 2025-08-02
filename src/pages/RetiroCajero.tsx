@@ -1,17 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import ResumenRetiro from "../components/ResumenRetiro";
 import { useUser } from "../context/UserContext";
 
 function RetiroCajero() {
   const navigate = useNavigate();
-  const {
-    saldoWLD,
-    setSaldoWLD,
-    precioWLD,
-    transacciones,
-    setTransacciones,
-  } = useUser();
+  const { saldoWLD, setSaldoWLD, precioWLD, transacciones, setTransacciones } =
+    useUser();
 
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [telefono, setTelefono] = useState("");
@@ -20,14 +14,15 @@ function RetiroCajero() {
 
   const montoQuetzales =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
-  const total = Math.floor((montoQuetzales * 0.85) / 50) * 50;
+  const totalSinAjuste = montoQuetzales * 0.85;
+  const total = Math.floor(totalSinAjuste / 50) * 50; // múltiplo de 50
 
-  const generarToken = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
+  const generarToken = () =>
+    Math.floor(100000 + Math.random() * 900000).toString();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
     if (cantidadWLD > saldoWLD) {
@@ -35,18 +30,15 @@ function RetiroCajero() {
       return;
     }
 
-    if (total < 50) {
-      alert("El monto mínimo a recibir en cajero es Q50");
-      return;
-    }
-
-    if (telefono === "" || confirmarTelefono === "") {
-      alert("Debes ingresar y confirmar el número de teléfono");
-      return;
-    }
-
     if (telefono !== confirmarTelefono) {
-      alert("El número de teléfono no coincide, por favor verifica");
+      alert("El número de teléfono no coincide");
+      return;
+    }
+
+    if (total <= 0) {
+      alert(
+        "El monto a recibir es menor al mínimo permitido (Q50). Ingresa más Worldcoin."
+      );
       return;
     }
 
@@ -64,30 +56,50 @@ function RetiroCajero() {
         tipo: "cajero",
         token,
         monto: total,
+        wldCambiados: cantidadWLD, // 👈 Guardamos la cantidad exacta
         estado: "pendiente",
       },
     ]);
 
-    alert(`✅ Tu retiro ha sido solicitado.
-🔑 TOKEN: ${token}
-📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago y tome captura.`);
+    alert(
+      `✅ Retiro en cajero solicitado.\n📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago.\n🔑 TOKEN: ${token}`
+    );
 
     navigate("/historial");
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      <h1 className="text-xl font-semibold mb-4">Retiro en Cajero</h1>
-      <p className="mb-2 text-gray-700">Saldo disponible: <strong>{saldoWLD} WLD</strong></p>
-      <p className="mb-6 text-gray-700">Precio actual WLD: <strong>Q{precioWLD}</strong></p>
+    <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-gradient-to-b from-purple-50 to-purple-100">
+      <h1 className="text-xl font-bold mb-4 text-gray-800">Retiro en Cajero</h1>
+      <p className="mb-2 text-gray-700">
+        Saldo disponible: <strong>{saldoWLD} WLD</strong>
+      </p>
+      <p className="mb-6 text-gray-700">
+        Precio actual WLD: <strong>Q{precioWLD}</strong>
+      </p>
 
       {mostrarResumen ? (
-        <ResumenRetiro
-          monto={montoQuetzales}
-          total={total}
-          onConfirmar={confirmarRetiro}
-          onCancelar={() => setMostrarResumen(false)}
-        />
+        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
+          <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
+          <p className="mb-4">
+            Total a recibir (comisión 15% incluido):{" "}
+            <strong>Q{total.toFixed(2)}</strong>
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => setMostrarResumen(false)}
+              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmarRetiro}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
       ) : (
         <form
           onSubmit={handleSubmit}
@@ -101,9 +113,8 @@ function RetiroCajero() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
-            min={1}
           />
 
           <input
@@ -111,28 +122,29 @@ function RetiroCajero() {
             placeholder="Número de teléfono"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
+
           <input
             type="text"
             placeholder="Confirmar número de teléfono"
             value={confirmarTelefono}
             onChange={(e) => setConfirmarTelefono(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
           <button
             type="submit"
-            className="w-full px-6 py-3 bg-[#0d6efd] text-white rounded-lg shadow hover:bg-blue-700 transition"
+            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
           >
             Continuar
           </button>
           <button
             type="button"
             onClick={() => navigate("/opciones")}
-            className="mt-2 text-[#0d6efd] underline text-sm"
+            className="mt-2 text-purple-700 underline text-sm"
           >
             ← Volver
           </button>

@@ -3,20 +3,26 @@ import { useNavigate } from "react-router-dom";
 function Login() {
   const navigate = useNavigate();
 
+  const handleLogin = () => {
+    navigate("/bienvenida");
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen px-4">
-      <h1 className="text-xl font-semibold mb-6 text-center">
-        Bienvenido a <span className="text-[#0d6efd]">Futurenet</span>
-      </h1>
-      <p className="text-sm text-gray-600 mb-6 text-center">
-        La forma más confiable y segura de cambiar tus Worldcoin
-      </p>
-      <button
-        onClick={() => navigate("/bienvenida")}
-        className="w-full max-w-sm px-6 py-3 bg-[#0d6efd] text-white rounded-lg shadow hover:bg-blue-700 transition"
-      >
-        Continuar
-      </button>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-purple-200">
+      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
+        <h1 className="text-3xl font-bold mb-4 text-gray-800">
+          Bienvenido a <span className="text-purple-600">Futurenet</span>
+        </h1>
+        <p className="text-gray-600 mb-6">
+          Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
+        </p>
+        <button
+          onClick={handleLogin}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-lg font-semibold shadow-lg transition"
+        >
+          🔐 Iniciar con World ID
+        </button>
+      </div>
     </div>
   );
 }

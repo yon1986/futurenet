@@ -1,57 +1,47 @@
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { saldoWLD, precioWLD } = useUser();
-
-  const totalEnQuetzales = saldoWLD * precioWLD * 0.85;
-  const puedeUsarCajero = totalEnQuetzales >= 50;
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen px-4">
-      <h1 className="text-xl font-semibold mb-4 text-center">
-        ¿Cómo deseas cambiar tus Worldcoin?
+    <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-gradient-to-b from-blue-50 to-blue-100">
+      {/* Título */}
+      <h1 className="text-3xl font-bold mb-3 text-gray-800 text-center">
+        Bienvenido a <span className="text-blue-600">Futurenet</span>
       </h1>
 
-      <p className="mb-4 text-gray-700 text-center">
-        Saldo actual: <strong>{saldoWLD} WLD</strong> ≈{" "}
-        <strong>Recibes Q{totalEnQuetzales.toFixed(2)}</strong>
+      {/* Subtítulo */}
+      <p className="text-gray-600 mb-6 text-center">
+        Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
       </p>
 
-      <button
-        onClick={() => navigate("/retiro-cajero")}
-        className={`w-full max-w-sm px-6 py-3 rounded-lg shadow transition ${
-          puedeUsarCajero
-            ? "bg-[#0d6efd] text-white hover:bg-blue-700"
-            : "bg-gray-300 text-gray-600 cursor-not-allowed"
-        }`}
-        disabled={!puedeUsarCajero}
-      >
-        Retiro en Cajero
-      </button>
+      {/* Pregunta original */}
+      <h2 className="text-lg font-semibold text-gray-700 mb-6 text-center">
+        ¿Cómo deseas cambiar tus <span className="text-blue-600">Worldcoin</span>?
+      </h2>
 
-      {!puedeUsarCajero && (
-        <p className="text-sm text-red-600 text-center mt-2">
-          ❌ No puedes retirar en cajero porque el monto mínimo es Q50.
-          <br />
-          Puedes retirar a cuenta bancaria aunque el monto sea menor.
-        </p>
-      )}
+      <div className="w-full space-y-5 max-w-sm">
+        <button
+          onClick={() => navigate("/retiro-cuenta")}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg font-semibold shadow-lg flex items-center justify-center gap-2 transition"
+        >
+          💳 Retiro en cuenta bancaria
+        </button>
 
-      <button
-        onClick={() => navigate("/retiro-cuenta")}
-        className="w-full max-w-sm px-6 py-3 bg-[#0d6efd] text-white rounded-lg shadow hover:bg-blue-700 transition mt-4"
-      >
-        Retiro en Cuenta Bancaria
-      </button>
+        <button
+          onClick={() => navigate("/retiro-cajero")}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-lg font-semibold shadow-lg flex items-center justify-center gap-2 transition"
+        >
+          🏧 Retiro en cajero
+        </button>
 
-      <button
-        onClick={() => navigate("/historial")}
-        className="w-full max-w-sm px-6 py-2 bg-gray-200 text-gray-700 rounded-lg shadow hover:bg-gray-300 transition mt-6"
-      >
-        Ver Historial de Transacciones
-      </button>
+        <button
+          onClick={() => navigate("/historial")}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white text-lg font-semibold shadow-lg flex items-center justify-center gap-2 transition"
+        >
+          📜 Historial de transacciones
+        </button>
+      </div>
     </div>
   );
 }

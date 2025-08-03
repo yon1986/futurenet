@@ -63,22 +63,26 @@ function RetiroCuenta() {
   const confirmarRetiro = async () => {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
+    const datos = {
+      usuarioID,
+      cantidadWLD,
+      tipo: "bancaria",
+      montoQ: total,
+      nombre,
+      banco,
+      cuenta,
+      tipoCuenta
+    };
+
+    console.log("📤 Enviando datos al backend:", datos);
+
     try {
       const res = await fetch("https://futurenet.vercel.app/api/transferir", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          usuarioID,
-          cantidadWLD,
-          tipo: "bancaria",
-          montoQ: total,
-          nombre,
-          banco,
-          cuenta,
-          tipoCuenta
-        }),
+        body: JSON.stringify(datos),
       });
 
       const data = await res.json();
@@ -87,7 +91,7 @@ function RetiroCuenta() {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
 
-        // Guardar en el contexto (solo para UI, el backend ya guarda en Supabase)
+        // Guardar en el contexto (solo para UI)
         setTransacciones([
           ...transacciones,
           {
@@ -109,7 +113,7 @@ function RetiroCuenta() {
         alert(`❌ Error: ${data.error}`);
       }
     } catch (error) {
-      console.error(error);
+      console.error("❌ Error conectando con el servidor:", error);
       alert("Error al conectar con el servidor");
     }
   };

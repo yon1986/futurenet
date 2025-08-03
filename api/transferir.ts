@@ -24,6 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono
     } = req.body;
 
+    console.log("📥 Datos recibidos en transferir:", req.body);
+
     // Validar datos principales
     if (!usuarioID || !cantidadWLD || !tipo || !montoQ) {
       return res.status(400).json({ error: 'Datos incompletos' });
@@ -63,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Insertar transacción con todos los datos
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
-      tipo, // puede ser "bancaria" o "cajero"
+      tipo, // debe ser "bancaria" o "cajero"
       wld_cambiados: cantidadWLD,
       monto_q: montoQ,
       token,

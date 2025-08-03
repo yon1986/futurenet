@@ -7,43 +7,29 @@ const supabase = createClient(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  try {
-    const usuarioID = req.query.usuarioID as string;
-    if (!usuarioID) {
-      return res.status(400).json({ error: 'usuarioID requerido' });
-    }
+  const { usuarioID } = req.body;
 
-    // Buscar usuario
-    let { data: usuario, error } = await supabase
+  if (!usuarioID) {
+    return res.status(400).json({ error: 'Falta usuarioID' });
+  }
+
+  try {
+    const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('saldo_wld')
       .eq('usuario_id', usuarioID)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      // Otro error que no es "no encontrado"
-      throw error;
+    if (error || !usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Si no existe, crear usuario
-    if (!usuario) {
-      const { data, error: insertError } = await supabase
-        .from('usuarios')
-        .insert({ usuario_id: usuarioID })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-      usuario = data;
-    }
-
-    return res.status(200).json({ saldoWLD: usuario?.saldo_wld || 0 });
+    return res.status(200).json({ saldo: usuario.saldo_wld });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Error al obtener el saldo' });
+    return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

@@ -4,7 +4,14 @@ import { useUser } from "../context/UserContext";
 
 function RetiroCajero() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD, setSaldoWLD, precioWLD, transacciones, setTransacciones } = useUser();
+  const {
+    usuarioID,
+    saldoWLD,
+    setSaldoWLD,
+    precioWLD,
+    transacciones,
+    setTransacciones,
+  } = useUser();
 
   // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
@@ -22,9 +29,6 @@ function RetiroCajero() {
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const totalSinAjuste = montoQuetzales * 0.85;
   const total = Math.floor(totalSinAjuste / 50) * 50; // múltiplo de 50
-
-  const generarToken = () =>
-    Math.floor(100000 + Math.random() * 900000).toString();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,27 +55,59 @@ function RetiroCajero() {
     setMostrarResumen(true);
   };
 
-  const confirmarRetiro = () => {
-    const token = generarToken();
+  const confirmarRetiro = async () => {
+    if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    setSaldoWLD(saldoWLD - (cantidadWLD as number));
-    setTransacciones([
-      ...transacciones,
-      {
-        id: Date.now(),
-        tipo: "cajero",
-        token,
-        monto: total,
-        wldCambiados: cantidadWLD,
-        estado: "pendiente",
-      },
-    ]);
+    if (total <= 0) {
+      alert("El monto a recibir es menor al mínimo permitido (Q50).");
+      return;
+    }
 
-    alert(
-      `✅ Retiro en cajero solicitado.\n📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago.\n🔑 TOKEN: ${token}`
-    );
+    try {
+      const res = await fetch("/api/transferir", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          usuarioID,
+          cantidadWLD,
+          tipo: "retiro", // cambiamos "cajero" por "retiro"
+          montoQ: total,
+        }),
+      });
 
-    navigate("/historial");
+      const data = await res.json();
+
+      if (data.ok) {
+        setSaldoWLD(data.nuevoSaldo);
+
+        setTransacciones([
+          ...transacciones,
+          {
+            id: Date.now(),
+            tipo: "cajero",
+            token: data.token,
+            monto: total,
+            wldCambiados: cantidadWLD,
+            estado: "pendiente",
+          },
+        ]);
+
+        alert(
+          `✅ Retiro en cajero solicitado.
+📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago.
+🔑 TOKEN: ${data.token}`
+        );
+
+        navigate("/historial");
+      } else {
+        alert(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error al conectar con el servidor");
+    }
   };
 
   return (

@@ -32,10 +32,6 @@ function RetiroCuenta() {
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const total = montoQuetzales * 0.85;
 
-  const generarToken = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
@@ -55,34 +51,64 @@ function RetiroCuenta() {
       return;
     }
 
+    if (total <= 0) {
+      alert("El monto a recibir es menor al mínimo permitido.");
+      return;
+    }
+
     setMostrarResumen(true);
   };
 
-  const confirmarRetiro = () => {
-    const token = generarToken();
+  const confirmarRetiro = async () => {
+    if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    setSaldoWLD(saldoWLD - (cantidadWLD as number));
-    setTransacciones([
-      ...transacciones,
-      {
-        id: Date.now(),
-        tipo: "cuenta",
-        token,
-        monto: total,
-        wldCambiados: cantidadWLD,
-        estado: "pendiente",
-      },
-    ]);
+    try {
+      const res = await fetch("/api/transferir", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          usuarioID,
+          cantidadWLD,
+          tipo: "retiro", // unificamos el tipo
+          montoQ: total,
+        }),
+      });
 
-    alert(`✅ Retiro a Cuenta Bancaria solicitado.
+      const data = await res.json();
+
+      if (data.ok) {
+        setSaldoWLD(data.nuevoSaldo);
+
+        setTransacciones([
+          ...transacciones,
+          {
+            id: Date.now(),
+            tipo: "cuenta",
+            token: data.token,
+            monto: total,
+            wldCambiados: cantidadWLD,
+            estado: "pendiente",
+          },
+        ]);
+
+        alert(`✅ Retiro a Cuenta Bancaria solicitado.
 👤 Nombre: ${nombre}
 🏦 Banco: ${banco}
 📂 Tipo de cuenta: ${tipoCuenta}
 💳 Cuenta: ${cuenta}
-🔑 TOKEN: ${token}
+🔑 TOKEN: ${data.token}
 📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago y tome captura.`);
 
-    navigate("/historial");
+        navigate("/historial");
+      } else {
+        alert(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error al conectar con el servidor");
+    }
   };
 
   return (
@@ -131,7 +157,6 @@ function RetiroCuenta() {
             required
           />
 
-          {/* Selección de Banco */}
           <select
             value={banco}
             onChange={(e) => setBanco(e.target.value)}
@@ -160,7 +185,6 @@ function RetiroCuenta() {
             <option>Multimoney</option>
           </select>
 
-          {/* Selección de tipo de cuenta */}
           <select
             value={tipoCuenta}
             onChange={(e) => setTipoCuenta(e.target.value)}
@@ -172,7 +196,6 @@ function RetiroCuenta() {
             <option>Ahorro</option>
           </select>
 
-          {/* Número de cuenta y confirmación */}
           <input
             type="text"
             placeholder="Número de cuenta"

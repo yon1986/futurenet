@@ -1,33 +1,53 @@
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 
 interface Transaccion {
   id: number;
-  tipo: "cajero" | "cuenta";
+  tipo: string;
   token: string;
   monto: number;
-  wldCambiados: number | string;
-  estado: "pendiente" | "completado";
+  wldCambiados: number;
+  estado: string;
+  telefono?: string;
+  nombre?: string;
+  banco?: string;
+  cuenta?: string;
+  tipoCuenta?: string;
 }
 
 interface UserContextType {
   usuarioID: string | null;
-  setUsuarioID: (value: string | null) => void;
+  setUsuarioID: (id: string | null) => void;
   saldoWLD: number;
-  setSaldoWLD: (value: number) => void;
+  setSaldoWLD: (saldo: number) => void;
   precioWLD: number;
-  setPrecioWLD: (value: number) => void;
   transacciones: Transaccion[];
   setTransacciones: (t: Transaccion[]) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Usamos el usuario de prueba que creamos en Supabase
-  const [usuarioID, setUsuarioID] = useState<string | null>("usuario_prueba");
-  const [saldoWLD, setSaldoWLD] = useState<number>(10);
-  const [precioWLD, setPrecioWLD] = useState<number>(25);
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
+export function UserProvider({ children }: { children: ReactNode }) {
+  const [usuarioID, setUsuarioIDState] = useState<string | null>(null);
+  const [saldoWLD, setSaldoWLDState] = useState<number>(0);
+  const [precioWLD] = useState<number>(35); // Precio fijo de ejemplo
+  const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
+
+  const setUsuarioID = (id: string | null) => {
+    setUsuarioIDState(id);
+    if (id) {
+      localStorage.setItem("usuarioID", id);
+    } else {
+      localStorage.removeItem("usuarioID");
+    }
+  };
+
+  const setSaldoWLD = (saldo: number) => {
+    setSaldoWLDState(saldo);
+  };
+
+  const setTransacciones = (t: Transaccion[]) => {
+    setTransaccionesState(t);
+  };
 
   return (
     <UserContext.Provider
@@ -37,7 +57,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saldoWLD,
         setSaldoWLD,
         precioWLD,
-        setPrecioWLD,
         transacciones,
         setTransacciones,
       }}
@@ -45,10 +64,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </UserContext.Provider>
   );
-};
+}
 
-export const useUser = () => {
+export function useUser() {
   const context = useContext(UserContext);
-  if (!context) throw new Error("useUser debe usarse dentro de UserProvider");
+  if (!context) {
+    throw new Error("useUser debe usarse dentro de un UserProvider");
+  }
   return context;
-};
+}

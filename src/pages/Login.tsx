@@ -4,15 +4,51 @@ import { useUser } from "../context/UserContext";
 
 function Login() {
   const navigate = useNavigate();
-  const { setUsuarioID } = useUser();
+  const { setUsuarioID, setSaldoWLD } = useUser();
 
-  const handleVerify = (response: VerificationResponse) => {
-    setUsuarioID(response.nullifier_hash);
+  // Login con World ID
+  const handleVerify = async (response: VerificationResponse) => {
+    const id = response.nullifier_hash;
+    setUsuarioID(id);
+
+    // Consultar saldo desde la API
+    try {
+      const res = await fetch("/api/saldo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioID: id }),
+      });
+      const data = await res.json();
+      if (data.saldo !== undefined) {
+        setSaldoWLD(data.saldo);
+      }
+    } catch (error) {
+      alert("Error al consultar el saldo");
+    }
+
     navigate("/bienvenida");
   };
 
-  const handleDemo = () => {
-    setUsuarioID("usuario_demo_nullifier_hash");
+  // Modo demo
+  const handleDemo = async () => {
+    const id = "usuario_prueba";
+    setUsuarioID(id);
+
+    // Consultar saldo desde la API
+    try {
+      const res = await fetch("/api/saldo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioID: id }),
+      });
+      const data = await res.json();
+      if (data.saldo !== undefined) {
+        setSaldoWLD(data.saldo);
+      }
+    } catch (error) {
+      alert("Error al consultar el saldo");
+    }
+
     navigate("/bienvenida");
   };
 
@@ -26,6 +62,7 @@ function Login() {
           Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
         </p>
 
+        {/* Botón de World ID */}
         <IDKitWidget
           action="futurenet-login"
           signal="login"
@@ -42,6 +79,7 @@ function Login() {
           )}
         </IDKitWidget>
 
+        {/* Botón demo */}
         <button
           onClick={handleDemo}
           className="w-full py-3 rounded-xl bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold shadow-md transition"

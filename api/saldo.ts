@@ -11,33 +11,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { usuarioID } = req.body;
-
-  if (!usuarioID) {
-    return res.status(400).json({ error: 'Falta usuarioID' });
-  }
-
   try {
+    const { usuarioID } = req.body;
+
+    if (!usuarioID) {
+      return res.status(400).json({ error: 'Falta usuarioID' });
+    }
+
     // Buscar usuario en Supabase
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('usuario_id, saldo_wld, created_at')
+      .select('saldo_wld')
       .eq('usuario_id', usuarioID)
       .single();
 
     if (error || !usuario) {
-      console.error("❌ Error buscando usuario:", error);
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      // Si no existe, lo creamos automáticamente con saldo inicial
+      await supabase.from('usuarios').insert({
+        usuario_id: usuarioID,
+        saldo_wld: 10 // saldo inicial
+      });
+
+      return res.status(200).json({ saldo: 10 });
     }
 
-    // Devolver saldo y datos extra
-    return res.status(200).json({
-      usuario_id: usuario.usuario_id,
-      saldo: usuario.saldo_wld,
-      creado: usuario.created_at
-    });
+    // Devolver saldo actual
+    return res.status(200).json({ saldo: usuario.saldo_wld });
   } catch (error) {
-    console.error("🔥 Error en el servidor:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

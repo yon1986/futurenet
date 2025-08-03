@@ -58,10 +58,8 @@ function RetiroCajero() {
   const confirmarRetiro = async () => {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    if (total <= 0) {
-      alert("El monto a recibir es menor al mínimo permitido (Q50).");
-      return;
-    }
+    // 👀 Aquí vemos qué usuario se está enviando
+    console.log("🆔 usuarioID enviado:", usuarioID);
 
     try {
       const res = await fetch("/api/transferir", {
@@ -72,7 +70,7 @@ function RetiroCajero() {
         body: JSON.stringify({
           usuarioID,
           cantidadWLD,
-          tipo: "retiro", // cambiamos "cajero" por "retiro"
+          tipo: "retiro",
           montoQ: total,
         }),
       });

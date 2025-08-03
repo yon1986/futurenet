@@ -13,6 +13,7 @@ interface Transaccion {
   banco?: string | null;
   cuenta?: string | null;
   tipo_cuenta?: string | null;
+  telefono?: string | null;
 }
 
 function Historial() {
@@ -100,13 +101,19 @@ function Historial() {
                   Q{t.monto_q.toFixed(2)}
                 </p>
 
-                {/* Mostrar datos bancarios solo si aplica */}
+                {/* Datos adicionales dependiendo del tipo */}
                 {t.tipo === "bancaria" && (
                   <div className="mt-2 text-sm text-gray-700">
                     <p><strong>Nombre:</strong> {t.nombre}</p>
                     <p><strong>Banco:</strong> {t.banco}</p>
                     <p><strong>Cuenta:</strong> {t.cuenta}</p>
                     <p><strong>Tipo de cuenta:</strong> {t.tipo_cuenta}</p>
+                  </div>
+                )}
+
+                {t.tipo === "cajero" && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p><strong>Teléfono:</strong> {t.telefono}</p>
                   </div>
                 )}
 

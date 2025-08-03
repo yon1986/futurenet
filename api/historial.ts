@@ -30,7 +30,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         nombre,
         banco,
         cuenta,
-        tipo_cuenta
+        tipo_cuenta,
+        telefono
       `)
       .eq('usuario_id', usuarioID)
       .order('created_at', { ascending: false });

@@ -6,7 +6,7 @@ function Login() {
   const navigate = useNavigate();
   const { setUsuarioID, setSaldoWLD } = useUser();
 
-  const obtenerSaldo = async (usuarioID: string) => {
+  const obtenerDatosUsuario = async (usuarioID: string) => {
     try {
       const res = await fetch("https://futurenet.vercel.app/api/saldo", {
         method: "POST",
@@ -17,13 +17,20 @@ function Login() {
       });
 
       const data = await res.json();
+
       if (data.saldo !== undefined) {
         setSaldoWLD(data.saldo);
+
+        // 👉 Guardar datos extra si quieres mostrarlos en el futuro
+        console.log("Datos del usuario:", {
+          usuario_id: data.usuario_id,
+          creado: data.creado,
+        });
       } else {
         setSaldoWLD(0);
       }
     } catch (error) {
-      console.error("Error obteniendo saldo:", error);
+      console.error("Error obteniendo datos del usuario:", error);
       setSaldoWLD(0);
     }
   };
@@ -34,8 +41,8 @@ function Login() {
     const usuarioID = response.nullifier_hash;
     setUsuarioID(usuarioID);
 
-    // obtener saldo real de Supabase
-    await obtenerSaldo(usuarioID);
+    // Obtener saldo y datos extra desde el backend
+    await obtenerDatosUsuario(usuarioID);
 
     navigate("/bienvenida");
   };
@@ -44,8 +51,8 @@ function Login() {
     const usuarioID = "usuario_prueba";
     setUsuarioID(usuarioID);
 
-    // obtener saldo real de Supabase
-    await obtenerSaldo(usuarioID);
+    // Obtener saldo y datos extra desde el backend
+    await obtenerDatosUsuario(usuarioID);
 
     navigate("/bienvenida");
   };

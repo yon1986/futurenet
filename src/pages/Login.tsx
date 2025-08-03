@@ -4,22 +4,49 @@ import { useUser } from "../context/UserContext";
 
 function Login() {
   const navigate = useNavigate();
-  const { setUsuarioID } = useUser();
+  const { setUsuarioID, setSaldoWLD } = useUser();
 
-  const handleVerify = (response: VerificationResponse) => {
+  const obtenerSaldo = async (usuarioID: string) => {
+    try {
+      const res = await fetch("https://futurenet.vercel.app/api/saldo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ usuarioID }),
+      });
+
+      const data = await res.json();
+      if (data.saldo !== undefined) {
+        setSaldoWLD(data.saldo);
+      } else {
+        setSaldoWLD(0);
+      }
+    } catch (error) {
+      console.error("Error obteniendo saldo:", error);
+      setSaldoWLD(0);
+    }
+  };
+
+  const handleVerify = async (response: VerificationResponse) => {
     console.log("Usuario verificado:", response);
 
-    // Guardamos el nullifier_hash del usuario de World ID
-    setUsuarioID(response.nullifier_hash);
+    const usuarioID = response.nullifier_hash;
+    setUsuarioID(usuarioID);
 
-    // Navegamos a la pantalla de bienvenida
+    // obtener saldo real de Supabase
+    await obtenerSaldo(usuarioID);
+
     navigate("/bienvenida");
   };
 
-  // Función demo para simular usuario existente en Supabase
-  const handleDemo = () => {
-    // 👇 Aquí ponemos el mismo ID que ya está en la tabla usuarios de Supabase
-    setUsuarioID("usuario_prueba");
+  const handleDemo = async () => {
+    const usuarioID = "usuario_prueba";
+    setUsuarioID(usuarioID);
+
+    // obtener saldo real de Supabase
+    await obtenerSaldo(usuarioID);
+
     navigate("/bienvenida");
   };
 
@@ -33,12 +60,11 @@ function Login() {
           Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
         </p>
 
-        {/* Botón de World ID */}
         <IDKitWidget
           action="futurenet-login"
           signal="login"
           onSuccess={handleVerify}
-          app_id="TU_APP_ID_DE_WORLDCOIN" // 👈 Reemplázalo con tu App ID real
+          app_id="TU_APP_ID_DE_WORLDCOIN"
         >
           {({ open }) => (
             <button
@@ -50,7 +76,6 @@ function Login() {
           )}
         </IDKitWidget>
 
-        {/* Botón demo solo para desarrollo */}
         <button
           onClick={handleDemo}
           className="w-full py-3 rounded-xl bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold shadow-md transition"

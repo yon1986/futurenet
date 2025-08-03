@@ -27,6 +27,7 @@ function RetiroCuenta() {
   const [tipoCuenta, setTipoCuenta] = useState("");
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
+  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
 
   const montoQuetzales =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
@@ -63,7 +64,7 @@ function RetiroCuenta() {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
     try {
-      const res = await fetch("/api/transferir", {
+      const res = await fetch("https://futurenet.vercel.app/api/transferir", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -71,7 +72,7 @@ function RetiroCuenta() {
         body: JSON.stringify({
           usuarioID,
           cantidadWLD,
-          tipo: "retiro", // unificamos el tipo
+          tipo: "bancaria",
           montoQ: total,
         }),
       });
@@ -80,12 +81,14 @@ function RetiroCuenta() {
 
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
+        setTokenGenerado(data.token);
 
+        // Guardar en el contexto (solo por UI, el backend ya lo guarda en Supabase)
         setTransacciones([
           ...transacciones,
           {
             id: Date.now(),
-            tipo: "cuenta",
+            tipo: "bancaria",
             token: data.token,
             monto: total,
             wldCambiados: cantidadWLD,
@@ -93,15 +96,7 @@ function RetiroCuenta() {
           },
         ]);
 
-        alert(`✅ Retiro a Cuenta Bancaria solicitado.
-👤 Nombre: ${nombre}
-🏦 Banco: ${banco}
-📂 Tipo de cuenta: ${tipoCuenta}
-💳 Cuenta: ${cuenta}
-🔑 TOKEN: ${data.token}
-📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago y tome captura.`);
-
-        navigate("/historial");
+        setMostrarResumen(false);
       } else {
         alert(`❌ Error: ${data.error}`);
       }
@@ -112,8 +107,8 @@ function RetiroCuenta() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      <h1 className="text-xl font-semibold mb-4">Retiro a Cuenta Bancaria</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-purple-50 to-purple-100">
+      <h1 className="text-xl font-semibold mb-4 text-gray-800">Retiro a Cuenta Bancaria</h1>
       <p className="mb-2 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong>
       </p>
@@ -124,6 +119,9 @@ function RetiroCuenta() {
       {mostrarResumen ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
           <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
+          <p className="mb-2"><strong>Banco:</strong> {banco}</p>
+          <p className="mb-2"><strong>Tipo de cuenta:</strong> {tipoCuenta}</p>
+          <p className="mb-2"><strong>Cuenta:</strong> {cuenta}</p>
           <p className="mb-4">
             Total a recibir (comisión 15% incluido):{" "}
             <strong>Q{total.toFixed(2)}</strong>
@@ -143,6 +141,25 @@ function RetiroCuenta() {
             </button>
           </div>
         </div>
+      ) : tokenGenerado ? (
+        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
+          <h2 className="text-lg font-semibold mb-4 text-green-600">
+            ✅ Retiro solicitado
+          </h2>
+          <p className="mb-4">
+            Tu token de seguimiento es:{" "}
+            <strong className="text-xl">{tokenGenerado}</strong>
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            Un asesor confirmará el depósito en tu cuenta bancaria.
+          </p>
+          <button
+            onClick={() => navigate("/historial")}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Ver Historial
+          </button>
+        </div>
       ) : (
         <form
           onSubmit={handleSubmit}
@@ -153,14 +170,14 @@ function RetiroCuenta() {
             placeholder="Nombre completo"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
           <select
             value={banco}
             onChange={(e) => setBanco(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           >
             <option value="">Selecciona el banco</option>
@@ -188,7 +205,7 @@ function RetiroCuenta() {
           <select
             value={tipoCuenta}
             onChange={(e) => setTipoCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           >
             <option value="">Selecciona el tipo de cuenta</option>
@@ -201,7 +218,7 @@ function RetiroCuenta() {
             placeholder="Número de cuenta"
             value={cuenta}
             onChange={(e) => setCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
           <input
@@ -209,7 +226,7 @@ function RetiroCuenta() {
             placeholder="Confirmar número de cuenta"
             value={confirmarCuenta}
             onChange={(e) => setConfirmarCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
@@ -221,21 +238,21 @@ function RetiroCuenta() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
             min={1}
           />
 
           <button
             type="submit"
-            className="w-full px-6 py-3 bg-[#0d6efd] text-white rounded-lg shadow hover:bg-blue-700 transition"
+            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
           >
             Continuar
           </button>
           <button
             type="button"
             onClick={() => navigate("/opciones")}
-            className="mt-2 text-[#0d6efd] underline text-sm"
+            className="mt-2 text-purple-700 underline text-sm"
           >
             ← Volver
           </button>

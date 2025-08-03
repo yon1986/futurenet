@@ -4,56 +4,15 @@ import { useUser } from "../context/UserContext";
 
 function Login() {
   const navigate = useNavigate();
-  const { setUsuarioID, setSaldoWLD } = useUser();
+  const { setUsuarioID } = useUser();
 
-  const obtenerDatosUsuario = async (usuarioID: string) => {
-    try {
-      const res = await fetch("https://futurenet.vercel.app/api/saldo", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ usuarioID }),
-      });
-
-      const data = await res.json();
-
-      if (data.saldo !== undefined) {
-        setSaldoWLD(data.saldo);
-
-        // 👉 Guardar datos extra si quieres mostrarlos en el futuro
-        console.log("Datos del usuario:", {
-          usuario_id: data.usuario_id,
-          creado: data.creado,
-        });
-      } else {
-        setSaldoWLD(0);
-      }
-    } catch (error) {
-      console.error("Error obteniendo datos del usuario:", error);
-      setSaldoWLD(0);
-    }
-  };
-
-  const handleVerify = async (response: VerificationResponse) => {
-    console.log("Usuario verificado:", response);
-
-    const usuarioID = response.nullifier_hash;
-    setUsuarioID(usuarioID);
-
-    // Obtener saldo y datos extra desde el backend
-    await obtenerDatosUsuario(usuarioID);
-
+  const handleVerify = (response: VerificationResponse) => {
+    setUsuarioID(response.nullifier_hash);
     navigate("/bienvenida");
   };
 
-  const handleDemo = async () => {
-    const usuarioID = "usuario_prueba";
-    setUsuarioID(usuarioID);
-
-    // Obtener saldo y datos extra desde el backend
-    await obtenerDatosUsuario(usuarioID);
-
+  const handleDemo = () => {
+    setUsuarioID("usuario_demo_nullifier_hash");
     navigate("/bienvenida");
   };
 

@@ -13,7 +13,6 @@ function RetiroCajero() {
     setTransacciones,
   } = useUser();
 
-  // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
@@ -29,7 +28,7 @@ function RetiroCajero() {
   const montoQuetzales =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const totalSinAjuste = montoQuetzales * 0.85;
-  const total = Math.floor(totalSinAjuste / 50) * 50; // múltiplo de 50
+  const total = Math.floor(totalSinAjuste / 50) * 50;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +97,6 @@ function RetiroCajero() {
         alert(`❌ Error: ${data.error}`);
       }
     } catch (error) {
-      console.error(error);
       alert("Error al conectar con el servidor");
     }
   };
@@ -116,7 +114,6 @@ function RetiroCajero() {
       {mostrarResumen ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
           <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
-          <p className="mb-2"><strong>Teléfono:</strong> {telefono}</p>
           <p className="mb-4">
             Total a recibir (comisión 15% incluido):{" "}
             <strong>Q{total.toFixed(2)}</strong>

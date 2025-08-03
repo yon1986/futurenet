@@ -13,7 +13,6 @@ function RetiroCuenta() {
     setTransacciones,
   } = useUser();
 
-  // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
@@ -74,8 +73,6 @@ function RetiroCuenta() {
       tipoCuenta
     };
 
-    console.log("📤 Enviando datos al backend:", datos);
-
     try {
       const res = await fetch("https://futurenet.vercel.app/api/transferir", {
         method: "POST",
@@ -91,7 +88,6 @@ function RetiroCuenta() {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
 
-        // Guardar en el contexto (solo para UI)
         setTransacciones([
           ...transacciones,
           {
@@ -113,7 +109,6 @@ function RetiroCuenta() {
         alert(`❌ Error: ${data.error}`);
       }
     } catch (error) {
-      console.error("❌ Error conectando con el servidor:", error);
       alert("Error al conectar con el servidor");
     }
   };

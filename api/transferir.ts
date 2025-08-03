@@ -24,8 +24,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono
     } = req.body;
 
-    console.log("📥 Datos recibidos en transferir:", req.body);
-
     // Validar datos principales
     if (!usuarioID || !cantidadWLD || !tipo || !montoQ) {
       return res.status(400).json({ error: 'Datos incompletos' });
@@ -55,7 +53,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('usuario_id', usuarioID);
 
     if (updateError) {
-      console.error("❌ Error al actualizar saldo:", updateError);
       return res.status(500).json({ error: 'Error actualizando el saldo' });
     }
 
@@ -65,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Insertar transacción con todos los datos
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
-      tipo, // debe ser "bancaria" o "cajero"
+      tipo,
       wld_cambiados: cantidadWLD,
       monto_q: montoQ,
       token,
@@ -78,13 +75,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (insertError) {
-      console.error("❌ Error al registrar transacción:", insertError);
       return res.status(500).json({ error: 'Error registrando transacción' });
     }
 
     return res.status(200).json({ ok: true, token, nuevoSaldo });
   } catch (error) {
-    console.error("🔥 Error inesperado:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

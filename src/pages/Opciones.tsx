@@ -23,13 +23,13 @@ function Opciones() {
         </p>
         <div className="flex flex-col gap-4">
           <button
-            onClick={() => navigate("/retirocuenta")}
+            onClick={() => navigate("/retiro-cuenta")}
             className="w-full py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition"
           >
             Retiro en cuenta bancaria
           </button>
           <button
-            onClick={() => navigate("/retirocajero")}
+            onClick={() => navigate("/retiro-cajero")}
             className="w-full py-3 bg-green-600 text-white rounded-xl shadow-lg hover:bg-green-700 transition"
           >
             Retiro en cajero

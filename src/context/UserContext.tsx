@@ -7,6 +7,7 @@ interface Transaccion {
   monto: number;
   wldCambiados: number;
   estado: string;
+  // Campos extra opcionales
   telefono?: string;
   nombre?: string;
   banco?: string;

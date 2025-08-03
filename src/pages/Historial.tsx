@@ -6,6 +6,7 @@ function Historial() {
   const navigate = useNavigate();
   const { usuarioID, transacciones } = useUser();
 
+  // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
@@ -38,16 +39,6 @@ function Historial() {
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Tipo:</span> {t.tipo}
                 </p>
-                {t.tipo === "bancaria" && (
-                  <>
-                    <p className="text-sm mb-1"><span className="font-semibold">Banco:</span> {t.banco}</p>
-                    <p className="text-sm mb-1"><span className="font-semibold">Cuenta:</span> {t.cuenta}</p>
-                    <p className="text-sm mb-1"><span className="font-semibold">Tipo cuenta:</span> {t.tipoCuenta}</p>
-                  </>
-                )}
-                {t.tipo === "cajero" && (
-                  <p className="text-sm mb-1"><span className="font-semibold">Teléfono:</span> {t.telefono}</p>
-                )}
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
                   <strong>{t.wldCambiados}</strong> WLD
@@ -56,6 +47,29 @@ function Historial() {
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
                   Q{t.monto.toFixed(2)}
                 </p>
+                {t.tipo === "bancaria" && (
+                  <>
+                    <p className="text-sm mb-1">
+                      <span className="font-semibold">Banco:</span> {t.banco}
+                    </p>
+                    <p className="text-sm mb-1">
+                      <span className="font-semibold">Tipo de cuenta:</span>{" "}
+                      {t.tipoCuenta}
+                    </p>
+                    <p className="text-sm mb-1">
+                      <span className="font-semibold">Cuenta:</span> {t.cuenta}
+                    </p>
+                    <p className="text-sm mb-1">
+                      <span className="font-semibold">Nombre:</span> {t.nombre}
+                    </p>
+                  </>
+                )}
+                {t.tipo === "cajero" && (
+                  <p className="text-sm mb-1">
+                    <span className="font-semibold">Teléfono:</span>{" "}
+                    {t.telefono}
+                  </p>
+                )}
                 <p className="text-sm">
                   <span className="font-semibold">Token:</span> {t.token}
                 </p>

@@ -24,6 +24,7 @@ function RetiroCajero() {
   const [telefono, setTelefono] = useState("");
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
+  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
 
   const montoQuetzales =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
@@ -58,11 +59,8 @@ function RetiroCajero() {
   const confirmarRetiro = async () => {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    // 👀 Aquí vemos qué usuario se está enviando
-    console.log("🆔 usuarioID enviado:", usuarioID);
-
     try {
-      const res = await fetch("/api/transferir", {
+      const res = await fetch("https://futurenet.vercel.app/api/transferir", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,6 +77,7 @@ function RetiroCajero() {
 
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
+        setTokenGenerado(data.token);
 
         setTransacciones([
           ...transacciones,
@@ -92,13 +91,8 @@ function RetiroCajero() {
           },
         ]);
 
-        alert(
-          `✅ Retiro en cajero solicitado.
-📲 Indique su número de token al WhatsApp 35950933 para reclamar su pago.
-🔑 TOKEN: ${data.token}`
-        );
-
-        navigate("/historial");
+        // mostramos el token en un modal bonito
+        setMostrarResumen(false);
       } else {
         alert(`❌ Error: ${data.error}`);
       }
@@ -139,6 +133,26 @@ function RetiroCajero() {
               Confirmar
             </button>
           </div>
+        </div>
+      ) : tokenGenerado ? (
+        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
+          <h2 className="text-lg font-semibold mb-4 text-green-600">
+            ✅ Retiro solicitado
+          </h2>
+          <p className="mb-4">
+            Tu token para reclamar el retiro es:{" "}
+            <strong className="text-xl">{tokenGenerado}</strong>
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            Envía este token por WhatsApp al <strong>35950933</strong> para
+            reclamar tu pago.
+          </p>
+          <button
+            onClick={() => navigate("/historial")}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Ver Historial
+          </button>
         </div>
       ) : (
         <form

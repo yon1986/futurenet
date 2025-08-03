@@ -1,10 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
+
+interface Transaccion {
+  id: string;
+  tipo: string;
+  token: string;
+  monto_q: number;
+  wld_cambiados: number;
+  estado: string;
+  created_at: string;
+}
 
 function Historial() {
   const navigate = useNavigate();
-  const { usuarioID, transacciones } = useUser();
+  const { usuarioID } = useUser();
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
+  const [cargando, setCargando] = useState(true);
 
   // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
@@ -13,12 +25,46 @@ function Historial() {
     }
   }, [usuarioID, navigate]);
 
+  // 📡 Consultar historial desde Supabase
+  useEffect(() => {
+    const obtenerHistorial = async () => {
+      try {
+        const res = await fetch("https://futurenet.vercel.app/api/historial", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ usuarioID }),
+        });
+
+        const data = await res.json();
+        if (data.transacciones) {
+          setTransacciones(data.transacciones);
+        } else {
+          setTransacciones([]);
+        }
+      } catch (error) {
+        console.error("❌ Error cargando historial:", error);
+        setTransacciones([]);
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    if (usuarioID) {
+      obtenerHistorial();
+    }
+  }, [usuarioID]);
+
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-white to-gray-100">
       <h1 className="text-xl font-bold mb-6 text-center">
         Historial de Transacciones
       </h1>
-      {transacciones.length === 0 ? (
+
+      {cargando ? (
+        <p className="text-center text-gray-600">Cargando...</p>
+      ) : transacciones.length === 0 ? (
         <div className="text-center mt-10">
           <p className="mb-4 text-gray-600">No tienes transacciones aún.</p>
           <button
@@ -37,18 +83,31 @@ function Historial() {
                 className="p-4 border border-gray-200 rounded-lg bg-white shadow-md"
               >
                 <p className="text-sm mb-1">
-                  <span className="font-semibold">Tipo:</span> {t.tipo}
+                  <span className="font-semibold">Tipo:</span>{" "}
+                  {t.tipo === "cajero" ? "Retiro en Cajero" : "Otro"}
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
-                  <strong>{t.wldCambiados}</strong> WLD
+                  <strong>{t.wld_cambiados}</strong> WLD
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
-                  Q{t.monto.toFixed(2)}
+                  Q{t.monto_q.toFixed(2)}
                 </p>
-                <p className="text-sm">
+                <p className="text-sm mb-1">
                   <span className="font-semibold">Token:</span> {t.token}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {new Date(t.created_at).toLocaleString()}
+                </p>
+                <p
+                  className={`text-xs font-semibold ${
+                    t.estado === "pendiente"
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  Estado: {t.estado}
                 </p>
               </div>
             ))}

@@ -13,12 +13,6 @@ function RetiroCuenta() {
     setTransacciones,
   } = useUser();
 
-  useEffect(() => {
-    if (!usuarioID) {
-      navigate("/");
-    }
-  }, [usuarioID, navigate]);
-
   const [nombre, setNombre] = useState("");
   const [banco, setBanco] = useState("");
   const [cuenta, setCuenta] = useState("");
@@ -28,12 +22,29 @@ function RetiroCuenta() {
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
 
+  // 🔒 Redirigir si no hay login
+  useEffect(() => {
+    if (!usuarioID) {
+      navigate("/");
+    }
+  }, [usuarioID, navigate]);
+
+  // Si el usuario aún no está listo, mostramos mensaje
+  if (!usuarioID) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Cargando...</p>
+      </div>
+    );
+  }
+
   const montoQuetzales =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const total = montoQuetzales * 0.85;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
     if (cantidadWLD > saldoWLD) {
@@ -62,24 +73,22 @@ function RetiroCuenta() {
   const confirmarRetiro = async () => {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    const datos = {
-      usuarioID,
-      cantidadWLD,
-      tipo: "bancaria",
-      montoQ: total,
-      nombre,
-      banco,
-      cuenta,
-      tipoCuenta
-    };
-
     try {
-      const res = await fetch("https://futurenet.vercel.app/api/transferir", {
+      const res = await fetch("/api/transferir", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(datos),
+        body: JSON.stringify({
+          usuarioID,
+          cantidadWLD,
+          tipo: "bancaria",
+          montoQ: total,
+          nombre,
+          banco,
+          cuenta,
+          tipoCuenta,
+        }),
       });
 
       const data = await res.json();
@@ -100,7 +109,7 @@ function RetiroCuenta() {
             nombre,
             banco,
             cuenta,
-            tipoCuenta
+            tipoCuenta,
           },
         ]);
 
@@ -115,7 +124,9 @@ function RetiroCuenta() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-purple-50 to-purple-100">
-      <h1 className="text-xl font-semibold mb-4 text-gray-800">Retiro a Cuenta Bancaria</h1>
+      <h1 className="text-xl font-semibold mb-4 text-gray-800">
+        Retiro a Cuenta Bancaria
+      </h1>
       <p className="mb-2 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong>
       </p>
@@ -190,23 +201,11 @@ function RetiroCuenta() {
             <option value="">Selecciona el banco</option>
             <option>Banco Industrial</option>
             <option>Banrural</option>
-            <option>Gyt</option>
             <option>BAC</option>
             <option>BAM</option>
-            <option>Inmobiliario</option>
-            <option>Inter</option>
-            <option>Ficohsa</option>
-            <option>Vivibanco</option>
-            <option>Antigua</option>
-            <option>Nexa</option>
-            <option>Azteca</option>
-            <option>INV</option>
-            <option>Credicorp</option>
+            <option>G&T</option>
             <option>Bantrab</option>
             <option>Promerica</option>
-            <option>CHN</option>
-            <option>CITIBANK</option>
-            <option>Multimoney</option>
           </select>
 
           <select
@@ -247,7 +246,6 @@ function RetiroCuenta() {
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
             className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
-            min={1}
           />
 
           <button

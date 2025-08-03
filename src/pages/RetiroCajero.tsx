@@ -13,17 +13,27 @@ function RetiroCajero() {
     setTransacciones,
   } = useUser();
 
+  const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
+  const [telefono, setTelefono] = useState("");
+  const [confirmarTelefono, setConfirmarTelefono] = useState("");
+  const [mostrarResumen, setMostrarResumen] = useState(false);
+  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
+
+  // 🔒 Redirigir si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
     }
   }, [usuarioID, navigate]);
 
-  const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
-  const [telefono, setTelefono] = useState("");
-  const [confirmarTelefono, setConfirmarTelefono] = useState("");
-  const [mostrarResumen, setMostrarResumen] = useState(false);
-  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
+  // Si no está cargado el usuario
+  if (!usuarioID) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Cargando...</p>
+      </div>
+    );
+  }
 
   const montoQuetzales =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
@@ -59,7 +69,7 @@ function RetiroCajero() {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
     try {
-      const res = await fetch("https://futurenet.vercel.app/api/transferir", {
+      const res = await fetch("/api/transferir", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,7 +79,7 @@ function RetiroCajero() {
           cantidadWLD,
           tipo: "cajero",
           montoQ: total,
-          telefono
+          telefono,
         }),
       });
 
@@ -88,7 +98,7 @@ function RetiroCajero() {
             monto: total,
             wldCambiados: cantidadWLD,
             estado: "pendiente",
-            telefono
+            telefono,
           },
         ]);
 

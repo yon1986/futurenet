@@ -13,8 +13,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { usuarioID, cantidadWLD, tipo, montoQ } = req.body;
+    console.log("📩 Datos recibidos:", { usuarioID, cantidadWLD, tipo, montoQ });
 
     if (!usuarioID || !cantidadWLD || !tipo) {
+      console.log("❌ Faltan datos");
       return res.status(400).json({ error: 'Datos incompletos' });
     }
 
@@ -25,28 +27,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('usuario_id', usuarioID)
       .single();
 
+    console.log("🔎 Resultado de la consulta usuario:", { usuario, userError });
+
     if (userError || !usuario) {
+      console.log("❌ Usuario no encontrado en Supabase");
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     if (usuario.saldo_wld < cantidadWLD) {
+      console.log("❌ Saldo insuficiente");
       return res.status(400).json({ error: 'Saldo insuficiente' });
     }
 
     // Actualizar saldo
     const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
+    console.log("💰 Nuevo saldo:", nuevoSaldo);
+
     const { error: updateError } = await supabase
       .from('usuarios')
       .update({ saldo_wld: nuevoSaldo })
       .eq('usuario_id', usuarioID);
 
     if (updateError) {
-      console.error(updateError);
+      console.error("❌ Error al actualizar saldo:", updateError);
       return res.status(500).json({ error: 'Error al actualizar el saldo' });
     }
 
     // Guardar transacción
     const token = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("📝 Token generado:", token);
 
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
@@ -58,13 +67,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (insertError) {
-      console.error(insertError);
+      console.error("❌ Error al registrar la transacción:", insertError);
       return res.status(500).json({ error: 'Error al registrar la transacción' });
     }
 
+    console.log("✅ Transacción registrada correctamente");
+
     return res.status(200).json({ ok: true, token, nuevoSaldo });
   } catch (error) {
-    console.error(error);
+    console.error("🔥 Error inesperado en el servidor:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

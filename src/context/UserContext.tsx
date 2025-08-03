@@ -23,7 +23,8 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [usuarioID, setUsuarioID] = useState<string | null>(null); // nullifier_hash
+  // Usamos el usuario de prueba que creamos en Supabase
+  const [usuarioID, setUsuarioID] = useState<string | null>("usuario_prueba");
   const [saldoWLD, setSaldoWLD] = useState<number>(10);
   const [precioWLD, setPrecioWLD] = useState<number>(25);
   const [transacciones, setTransacciones] = useState<Transaccion[]>([]);

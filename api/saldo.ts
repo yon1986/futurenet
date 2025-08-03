@@ -18,18 +18,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Buscar usuario en Supabase
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('saldo_wld')
+      .select('usuario_id, saldo_wld, created_at')
       .eq('usuario_id', usuarioID)
       .single();
 
     if (error || !usuario) {
+      console.error("❌ Error buscando usuario:", error);
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    return res.status(200).json({ saldo: usuario.saldo_wld });
+    // Devolver saldo y datos extra
+    return res.status(200).json({
+      usuario_id: usuario.usuario_id,
+      saldo: usuario.saldo_wld,
+      creado: usuario.created_at
+    });
   } catch (error) {
+    console.error("🔥 Error en el servidor:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

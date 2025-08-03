@@ -20,16 +20,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { data, error } = await supabase
       .from('transacciones')
-      .select('*')
+      .select(`
+        id,
+        tipo,
+        token,
+        monto_q,
+        wld_cambiados,
+        created_at,
+        nombre,
+        banco,
+        cuenta,
+        tipo_cuenta
+      `)
       .eq('usuario_id', usuarioID)
       .order('created_at', { ascending: false });
 
     if (error) {
-      return res.status(500).json({ error: 'Error consultando transacciones' });
+      console.error("❌ Error consultando historial:", error);
+      return res.status(500).json({ error: 'Error consultando historial' });
     }
 
     return res.status(200).json({ transacciones: data });
   } catch (error) {
+    console.error("🔥 Error en el servidor:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

@@ -12,39 +12,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { usuarioID, cantidadWLD, tipo, montoQ } = req.body;
-    console.log("📩 Datos recibidos:", { usuarioID, cantidadWLD, tipo, montoQ });
+    const { 
+      usuarioID, 
+      cantidadWLD, 
+      tipo, 
+      montoQ, 
+      nombre, 
+      banco, 
+      cuenta, 
+      tipoCuenta 
+    } = req.body;
 
-    // 1️⃣ Validar datos
     if (!usuarioID || !cantidadWLD || !tipo || !montoQ) {
-      console.log("❌ Faltan datos");
       return res.status(400).json({ error: 'Datos incompletos' });
     }
 
-    // 2️⃣ Verificar que el usuario exista
+    // Verificar usuario
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('*')
       .eq('usuario_id', usuarioID)
       .single();
 
-    console.log("🔎 Resultado de la consulta usuario:", { usuario, userError });
-
     if (userError || !usuario) {
-      console.log("❌ Usuario no encontrado en Supabase");
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // 3️⃣ Validar saldo
+    // Verificar saldo
     if (usuario.saldo_wld < cantidadWLD) {
-      console.log("❌ Saldo insuficiente");
       return res.status(400).json({ error: 'Saldo insuficiente' });
     }
 
-    // 4️⃣ Actualizar saldo
+    // Actualizar saldo
     const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
-    console.log("💰 Nuevo saldo:", nuevoSaldo);
-
     const { error: updateError } = await supabase
       .from('usuarios')
       .update({ saldo_wld: nuevoSaldo })
@@ -52,36 +52,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (updateError) {
       console.error("❌ Error al actualizar saldo:", updateError);
-      return res.status(500).json({ error: 'Error al actualizar el saldo' });
+      return res.status(500).json({ error: 'Error actualizando el saldo' });
     }
 
-    // 5️⃣ Generar token
+    // Generar token
     const token = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log("📝 Token generado:", token);
 
-    // 6️⃣ Registrar transacción
+    // Guardar transacción
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
       wld_cambiados: cantidadWLD,
       monto_q: montoQ,
       token,
-      estado: 'pendiente',
+      nombre: nombre || null,
+      banco: banco || null,
+      cuenta: cuenta || null,
+      tipo_cuenta: tipoCuenta || null,
       created_at: new Date()
     });
 
     if (insertError) {
-      console.error("❌ Error al registrar la transacción:", insertError);
-      return res.status(500).json({ error: 'Error al registrar la transacción' });
+      console.error("❌ Error al registrar transacción:", insertError);
+      return res.status(500).json({ error: 'Error registrando transacción' });
     }
 
-    console.log("✅ Transacción registrada correctamente");
-
-    // 7️⃣ Responder al frontend
     return res.status(200).json({ ok: true, token, nuevoSaldo });
-
   } catch (error) {
-    console.error("🔥 Error inesperado en el servidor:", error);
+    console.error("🔥 Error inesperado:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

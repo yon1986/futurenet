@@ -8,8 +8,11 @@ interface Transaccion {
   token: string;
   monto_q: number;
   wld_cambiados: number;
-  estado: string;
   created_at: string;
+  nombre?: string | null;
+  banco?: string | null;
+  cuenta?: string | null;
+  tipo_cuenta?: string | null;
 }
 
 function Historial() {
@@ -25,7 +28,7 @@ function Historial() {
     }
   }, [usuarioID, navigate]);
 
-  // 📡 Consultar historial desde Supabase
+  // 📡 Cargar historial desde API
   useEffect(() => {
     const obtenerHistorial = async () => {
       try {
@@ -84,7 +87,9 @@ function Historial() {
               >
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Tipo:</span>{" "}
-                  {t.tipo === "cajero" ? "Retiro en Cajero" : "Otro"}
+                  {t.tipo === "cajero"
+                    ? "Retiro en Cajero"
+                    : "Retiro a Cuenta Bancaria"}
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
@@ -94,20 +99,22 @@ function Historial() {
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
                   Q{t.monto_q.toFixed(2)}
                 </p>
-                <p className="text-sm mb-1">
+
+                {/* Mostrar datos bancarios solo si aplica */}
+                {t.tipo === "bancaria" && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p><strong>Nombre:</strong> {t.nombre}</p>
+                    <p><strong>Banco:</strong> {t.banco}</p>
+                    <p><strong>Cuenta:</strong> {t.cuenta}</p>
+                    <p><strong>Tipo de cuenta:</strong> {t.tipo_cuenta}</p>
+                  </div>
+                )}
+
+                <p className="text-sm mt-2">
                   <span className="font-semibold">Token:</span> {t.token}
                 </p>
                 <p className="text-xs text-gray-500">
                   {new Date(t.created_at).toLocaleString()}
-                </p>
-                <p
-                  className={`text-xs font-semibold ${
-                    t.estado === "pendiente"
-                      ? "text-yellow-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  Estado: {t.estado}
                 </p>
               </div>
             ))}

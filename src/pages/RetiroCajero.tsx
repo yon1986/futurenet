@@ -68,8 +68,9 @@ function RetiroCajero() {
         body: JSON.stringify({
           usuarioID,
           cantidadWLD,
-          tipo: "retiro",
+          tipo: "cajero",
           montoQ: total,
+          telefono
         }),
       });
 
@@ -88,10 +89,10 @@ function RetiroCajero() {
             monto: total,
             wldCambiados: cantidadWLD,
             estado: "pendiente",
+            telefono
           },
         ]);
 
-        // mostramos el token en un modal bonito
         setMostrarResumen(false);
       } else {
         alert(`❌ Error: ${data.error}`);
@@ -115,6 +116,7 @@ function RetiroCajero() {
       {mostrarResumen ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
           <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
+          <p className="mb-2"><strong>Teléfono:</strong> {telefono}</p>
           <p className="mb-4">
             Total a recibir (comisión 15% incluido):{" "}
             <strong>Q{total.toFixed(2)}</strong>

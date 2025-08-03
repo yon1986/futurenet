@@ -20,14 +20,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       nombre, 
       banco, 
       cuenta, 
-      tipoCuenta 
+      tipoCuenta,
+      telefono
     } = req.body;
 
+    // Validar datos principales
     if (!usuarioID || !cantidadWLD || !tipo || !montoQ) {
       return res.status(400).json({ error: 'Datos incompletos' });
     }
 
-    // Verificar usuario
+    // Verificar usuario en Supabase
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('*')
@@ -55,20 +57,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Error actualizando el saldo' });
     }
 
-    // Generar token
+    // Generar token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Guardar transacción
+    // Insertar transacción con todos los datos
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
-      tipo,
+      tipo, // puede ser "bancaria" o "cajero"
       wld_cambiados: cantidadWLD,
       monto_q: montoQ,
       token,
-      nombre: nombre || null,
-      banco: banco || null,
-      cuenta: cuenta || null,
-      tipo_cuenta: tipoCuenta || null,
+      nombre: tipo === "bancaria" ? nombre || null : null,
+      banco: tipo === "bancaria" ? banco || null : null,
+      cuenta: tipo === "bancaria" ? cuenta || null : null,
+      tipo_cuenta: tipo === "bancaria" ? tipoCuenta || null : null,
+      telefono: tipo === "cajero" ? telefono || null : null,
       created_at: new Date()
     });
 

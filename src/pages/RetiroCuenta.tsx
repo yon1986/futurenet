@@ -74,6 +74,10 @@ function RetiroCuenta() {
           cantidadWLD,
           tipo: "bancaria",
           montoQ: total,
+          nombre,
+          banco,
+          cuenta,
+          tipoCuenta
         }),
       });
 
@@ -83,7 +87,7 @@ function RetiroCuenta() {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
 
-        // Guardar en el contexto (solo por UI, el backend ya lo guarda en Supabase)
+        // Guardar en el contexto (solo para UI, el backend ya guarda en Supabase)
         setTransacciones([
           ...transacciones,
           {
@@ -93,6 +97,10 @@ function RetiroCuenta() {
             monto: total,
             wldCambiados: cantidadWLD,
             estado: "pendiente",
+            nombre,
+            banco,
+            cuenta,
+            tipoCuenta
           },
         ]);
 

@@ -9,16 +9,17 @@ function Login() {
   const handleVerify = (response: VerificationResponse) => {
     console.log("Usuario verificado:", response);
 
-    // Guardamos el nullifier_hash del usuario
+    // Guardamos el nullifier_hash del usuario de World ID
     setUsuarioID(response.nullifier_hash);
 
     // Navegamos a la pantalla de bienvenida
     navigate("/bienvenida");
   };
 
-  // Función demo para simular usuario
+  // Función demo para simular usuario existente en Supabase
   const handleDemo = () => {
-    setUsuarioID("usuario_demo_nullifier_hash");
+    // 👇 Aquí ponemos el mismo ID que ya está en la tabla usuarios de Supabase
+    setUsuarioID("usuario_prueba");
     navigate("/bienvenida");
   };
 

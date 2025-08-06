@@ -49,6 +49,13 @@ function RetiroCajero() {
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
     const diferencia = totalSinComision - totalARecibir;
 
+    if (totalARecibir < 50) {
+      alert(
+        "❌ El monto a recibir es menor al mínimo permitido de Q50.\n\nRecarga más WLD o utiliza la opción de retiro en cuenta bancaria."
+      );
+      return;
+    }
+
     setSobrante(diferencia);
     setMostrarResumen(true);
   };
@@ -59,11 +66,6 @@ function RetiroCajero() {
     const montoQ = cantidadWLD * precioWLD;
     const totalSinComision = montoQ * 0.85;
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
-
-    if (totalARecibir <= 0) {
-      alert("El monto a recibir es menor al mínimo permitido.");
-      return;
-    }
 
     try {
       const res = await fetch("/api/transferir", {

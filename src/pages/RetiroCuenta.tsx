@@ -43,6 +43,7 @@ function RetiroCuenta() {
     e.preventDefault();
 
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
+
     if (cantidadWLD > saldoWLD) {
       alert(`No tienes suficiente saldo. Saldo disponible: ${saldoWLD} WLD`);
       return;
@@ -55,8 +56,8 @@ function RetiroCuenta() {
       alert("El número de cuenta no coincide.");
       return;
     }
-    if (total <= 0) {
-      alert("El monto a recibir es menor al mínimo permitido.");
+    if (total < 1) {
+      alert("El monto a recibir es demasiado bajo. Aumenta la cantidad a cambiar.");
       return;
     }
 
@@ -163,8 +164,7 @@ function RetiroCuenta() {
             <strong className="text-xl">{tokenGenerado}</strong>
           </p>
           <p className="text-sm text-gray-600 mb-4">
-            Envía este token por WhatsApp al <strong>35950933</strong> para
-            reclamar tu pago.
+            Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.
           </p>
           <button
             onClick={() => navigate("/historial")}
@@ -174,23 +174,19 @@ function RetiroCuenta() {
           </button>
         </div>
       ) : (
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 w-full max-w-sm"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
           <input
             type="text"
             placeholder="Nombre completo"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="p-3 border border-gray-300 rounded-lg"
             required
           />
-
           <select
             value={banco}
             onChange={(e) => setBanco(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="p-3 border border-gray-300 rounded-lg"
             required
           >
             <option value="">Selecciona el banco</option>
@@ -202,24 +198,22 @@ function RetiroCuenta() {
             <option>Bantrab</option>
             <option>Promerica</option>
           </select>
-
           <select
             value={tipoCuenta}
             onChange={(e) => setTipoCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="p-3 border border-gray-300 rounded-lg"
             required
           >
             <option value="">Selecciona el tipo de cuenta</option>
             <option>Monetaria</option>
             <option>Ahorro</option>
           </select>
-
           <input
             type="text"
             placeholder="Número de cuenta"
             value={cuenta}
             onChange={(e) => setCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="p-3 border border-gray-300 rounded-lg"
             required
           />
           <input
@@ -227,10 +221,9 @@ function RetiroCuenta() {
             placeholder="Confirmar número de cuenta"
             value={confirmarCuenta}
             onChange={(e) => setConfirmarCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="p-3 border border-gray-300 rounded-lg"
             required
           />
-
           <label className="font-semibold text-sm">
             ¿Cuántos Worldcoin deseas cambiar?
           </label>
@@ -239,13 +232,12 @@ function RetiroCuenta() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="p-3 border border-gray-300 rounded-lg"
             required
           />
-
           <button
             type="submit"
-            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
+            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700"
           >
             Continuar
           </button>

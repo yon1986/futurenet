@@ -18,9 +18,11 @@ function Opciones() {
         <h1 className="text-xl font-bold mb-4 text-gray-800">
           ¿Cómo deseas cambiar tus Worldcoin?
         </h1>
-        <p className="mb-4 text-gray-700">
-          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q
-          {(saldoWLD * precioWLD).toFixed(2)}
+        <p className="mb-2 text-gray-700">
+          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          Precio actual del WLD: <strong>Q{precioWLD}</strong>
         </p>
 
         <div className="flex flex-col gap-4">

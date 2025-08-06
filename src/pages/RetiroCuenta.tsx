@@ -119,7 +119,7 @@ function RetiroCuenta() {
         Retiro a Cuenta Bancaria
       </h1>
       <p className="mb-2 text-gray-700">
-        Saldo disponible: <strong>{saldoWLD} WLD</strong>
+        Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * 35).toFixed(2)}
       </p>
 
       {mostrarResumen ? (

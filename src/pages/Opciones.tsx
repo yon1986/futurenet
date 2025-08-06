@@ -19,7 +19,7 @@ function Opciones() {
           ¿Cómo deseas cambiar tus Worldcoin?
         </h1>
         <p className="mb-4 text-gray-700">
-          Saldo actual: <strong>{saldoWLD} WLD</strong>
+          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * 35).toFixed(2)}
         </p>
 
         <div className="flex flex-col gap-4">

@@ -113,7 +113,7 @@ function RetiroCajero() {
     <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-gradient-to-b from-purple-50 to-purple-100">
       <h1 className="text-xl font-bold mb-4 text-gray-800">Retiro en Cajero</h1>
       <p className="mb-2 text-gray-700">
-        Saldo disponible: <strong>{saldoWLD} WLD</strong>
+        Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * 35).toFixed(2)}
       </p>
 
       {mostrarResumen ? (

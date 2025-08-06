@@ -1,4 +1,3 @@
-// src/pages/RetiroCajero.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
@@ -19,8 +18,8 @@ function RetiroCajero() {
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
   const [telefonoConfirmado, setTelefonoConfirmado] = useState<string | null>(null);
+  const [sobrante, setSobrante] = useState<number>(0);
 
-  // Redirigir si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
@@ -45,17 +44,23 @@ function RetiroCajero() {
       return;
     }
 
+    const montoQ = cantidadWLD * precioWLD;
+    const totalSinComision = montoQ * 0.85;
+    const totalARecibir = Math.floor(totalSinComision / 50) * 50;
+    const diferencia = totalSinComision - totalARecibir;
+
+    setSobrante(diferencia);
     setMostrarResumen(true);
   };
 
   const confirmarRetiro = async (telefono: string) => {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    const montoTotal = cantidadWLD * precioWLD;
-    const totalSinComision = montoTotal * 0.85;
-    const total = Math.floor(totalSinComision / 50) * 50;
+    const montoQ = cantidadWLD * precioWLD;
+    const totalSinComision = montoQ * 0.85;
+    const totalARecibir = Math.floor(totalSinComision / 50) * 50;
 
-    if (total <= 0) {
+    if (totalARecibir <= 0) {
       alert("El monto a recibir es menor al mínimo permitido.");
       return;
     }
@@ -70,7 +75,7 @@ function RetiroCajero() {
           usuarioID,
           cantidadWLD,
           tipo: "cajero",
-          montoQ: total,
+          montoQ: totalARecibir,
           telefono,
         }),
       });
@@ -88,7 +93,7 @@ function RetiroCajero() {
             id: Date.now(),
             tipo: "cajero",
             token: data.token,
-            monto: total,
+            monto: totalARecibir,
             wldCambiados: cantidadWLD,
             estado: "pendiente",
             telefono,
@@ -116,6 +121,7 @@ function RetiroCajero() {
           saldoDisponible={saldoWLD}
           cantidadWLD={typeof cantidadWLD === "number" ? cantidadWLD : 0}
           precioWLD={precioWLD}
+          sobrante={sobrante}
           onCancelar={() => setMostrarResumen(false)}
           onConfirmar={confirmarRetiro}
         />

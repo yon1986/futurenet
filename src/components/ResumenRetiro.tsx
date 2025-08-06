@@ -4,6 +4,7 @@ interface Props {
   saldoDisponible: number;
   cantidadWLD: number;
   precioWLD: number;
+  sobrante: number; // 🆕 agregado para mostrar lo que queda como saldo
   onConfirmar: (telefono: string) => void;
   onCancelar: () => void;
 }
@@ -12,6 +13,7 @@ function ResumenRetiro({
   saldoDisponible,
   cantidadWLD,
   precioWLD,
+  sobrante,
   onConfirmar,
   onCancelar,
 }: Props) {
@@ -34,16 +36,36 @@ function ResumenRetiro({
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg text-center w-full max-w-md text-sm">
-      <h2 className="text-lg font-semibold mb-3 text-purple-700">Resumen del Retiro</h2>
+      <h2 className="text-lg font-semibold mb-3 text-purple-700">
+        Resumen del Retiro
+      </h2>
 
       <div className="text-left space-y-1 mb-4">
-        <p><strong>Saldo disponible:</strong> {saldoDisponible.toFixed(2)} WLD</p>
-        <p><strong>WLD a cambiar:</strong> {cantidadWLD} WLD</p>
-        <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
-        <p><strong>Comisión (15%):</strong> Q{comision.toFixed(2)}</p>
-        <p className="text-green-700 font-bold text-base">
-          Total a recibir: Q{totalRecibir.toFixed(2)}
+        <p>
+          <strong>Saldo disponible:</strong> {saldoDisponible.toFixed(2)} WLD
         </p>
+        <p>
+          <strong>WLD a cambiar:</strong> {cantidadWLD} WLD
+        </p>
+        <p>
+          <strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}
+        </p>
+        <p>
+          <strong>Comisión (15%):</strong> Q{comision.toFixed(2)}
+        </p>
+        <p className="text-green-700 font-bold text-base">
+          Total a recibir: Q
+          {Math.floor(totalRecibir / 50) * 50 /* Múltiplo de Q50 */}
+        </p>
+
+        {/* 🟣 Mostrar sobrante si existe */}
+        {sobrante > 0 && (
+          <p className="text-gray-700 text-sm mt-2">
+            🔒 Solo se puede retirar en múltiplos de Q50. El restante de{" "}
+            <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo en tu
+            cuenta Worldcoin.
+          </p>
+        )}
       </div>
 
       <div className="mt-4">

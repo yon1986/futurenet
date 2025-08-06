@@ -1,6 +1,8 @@
+// src/pages/RetiroCajero.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
+import ResumenRetiro from "../components/ResumenRetiro";
 
 function RetiroCajero() {
   const navigate = useNavigate();
@@ -14,19 +16,17 @@ function RetiroCajero() {
   } = useUser();
 
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
-  const [telefono, setTelefono] = useState("");
-  const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
+  const [telefonoConfirmado, setTelefonoConfirmado] = useState<string | null>(null);
 
-  // 🔒 Redirigir si no hay login
+  // Redirigir si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
     }
   }, [usuarioID, navigate]);
 
-  // Si no está cargado el usuario
   if (!usuarioID) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -34,11 +34,6 @@ function RetiroCajero() {
       </div>
     );
   }
-
-  const montoQuetzales =
-    typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
-  const totalSinAjuste = montoQuetzales * 0.85;
-  const total = Math.floor(totalSinAjuste / 50) * 50;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,23 +45,20 @@ function RetiroCajero() {
       return;
     }
 
-    if (telefono !== confirmarTelefono) {
-      alert("El número de teléfono no coincide");
-      return;
-    }
-
-    if (total <= 0) {
-      alert(
-        "El monto a recibir es menor al mínimo permitido (Q50). Ingresa más Worldcoin."
-      );
-      return;
-    }
-
     setMostrarResumen(true);
   };
 
-  const confirmarRetiro = async () => {
+  const confirmarRetiro = async (telefono: string) => {
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
+
+    const montoTotal = cantidadWLD * precioWLD;
+    const totalSinComision = montoTotal * 0.85;
+    const total = Math.floor(totalSinComision / 50) * 50;
+
+    if (total <= 0) {
+      alert("El monto a recibir es menor al mínimo permitido.");
+      return;
+    }
 
     try {
       const res = await fetch("/api/transferir", {
@@ -88,6 +80,7 @@ function RetiroCajero() {
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
+        setTelefonoConfirmado(telefono);
 
         setTransacciones([
           ...transacciones,
@@ -117,32 +110,15 @@ function RetiroCajero() {
       <p className="mb-2 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong>
       </p>
-      <p className="mb-6 text-gray-700">
-        Precio actual WLD: <strong>Q{precioWLD}</strong>
-      </p>
 
       {mostrarResumen ? (
-        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
-          <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
-          <p className="mb-4">
-            Total a recibir (comisión 15% incluido):{" "}
-            <strong>Q{total.toFixed(2)}</strong>
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => setMostrarResumen(false)}
-              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={confirmarRetiro}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-            >
-              Confirmar
-            </button>
-          </div>
-        </div>
+        <ResumenRetiro
+          saldoDisponible={saldoWLD}
+          cantidadWLD={typeof cantidadWLD === "number" ? cantidadWLD : 0}
+          precioWLD={precioWLD}
+          onCancelar={() => setMostrarResumen(false)}
+          onConfirmar={confirmarRetiro}
+        />
       ) : tokenGenerado ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
           <h2 className="text-lg font-semibold mb-4 text-green-600">
@@ -176,24 +152,6 @@ function RetiroCajero() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
-
-          <input
-            type="text"
-            placeholder="Número de teléfono"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
-
-          <input
-            type="text"
-            placeholder="Confirmar número de teléfono"
-            value={confirmarTelefono}
-            onChange={(e) => setConfirmarTelefono(e.target.value)}
             className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />

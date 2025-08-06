@@ -1,15 +1,26 @@
 import { useState } from "react";
 
 interface Props {
-  monto: number;
-  total: number;
+  saldoDisponible: number;
+  cantidadWLD: number;
+  precioWLD: number;
   onConfirmar: (telefono: string) => void;
   onCancelar: () => void;
 }
 
-function ResumenRetiro({ monto, total, onConfirmar, onCancelar }: Props) {
+function ResumenRetiro({
+  saldoDisponible,
+  cantidadWLD,
+  precioWLD,
+  onConfirmar,
+  onCancelar,
+}: Props) {
   const [tel1, setTel1] = useState("");
   const [tel2, setTel2] = useState("");
+
+  const totalSinComision = cantidadWLD * precioWLD;
+  const comision = totalSinComision * 0.15;
+  const totalRecibir = totalSinComision - comision;
 
   const handleConfirmar = () => {
     if (tel1 !== tel2 || tel1 === "") {
@@ -19,15 +30,21 @@ function ResumenRetiro({ monto, total, onConfirmar, onCancelar }: Props) {
     onConfirmar(tel1);
   };
 
+  if (cantidadWLD <= 0 || cantidadWLD > saldoDisponible) return null;
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg text-center w-full max-w-md">
-      <h2 className="text-lg font-semibold mb-3">Resumen del Retiro</h2>
-      <p className="text-gray-700">
-        Monto solicitado: <strong>Q{monto}</strong>
-      </p>
-      <p className="text-gray-700 mt-1">
-        <strong>Recibes Q{total}</strong>
-      </p>
+    <div className="bg-white p-6 rounded-lg shadow-lg text-center w-full max-w-md text-sm">
+      <h2 className="text-lg font-semibold mb-3 text-purple-700">Resumen del Retiro</h2>
+
+      <div className="text-left space-y-1 mb-4">
+        <p><strong>Saldo disponible:</strong> {saldoDisponible.toFixed(2)} WLD</p>
+        <p><strong>WLD a cambiar:</strong> {cantidadWLD} WLD</p>
+        <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
+        <p><strong>Comisión (15%):</strong> Q{comision.toFixed(2)}</p>
+        <p className="text-green-700 font-bold text-base">
+          Total a recibir: Q{totalRecibir.toFixed(2)}
+        </p>
+      </div>
 
       <div className="mt-4">
         <input
@@ -35,14 +52,14 @@ function ResumenRetiro({ monto, total, onConfirmar, onCancelar }: Props) {
           placeholder="Número de teléfono"
           value={tel1}
           onChange={(e) => setTel1(e.target.value)}
-          className="p-2 border border-gray-300 rounded-lg w-full mb-2 focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+          className="p-2 border border-gray-300 rounded-lg w-full mb-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
         <input
           type="text"
           placeholder="Confirmar número de teléfono"
           value={tel2}
           onChange={(e) => setTel2(e.target.value)}
-          className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+          className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
       </div>
 
@@ -55,11 +72,15 @@ function ResumenRetiro({ monto, total, onConfirmar, onCancelar }: Props) {
         </button>
         <button
           onClick={handleConfirmar}
-          className="px-4 py-2 bg-[#0d6efd] text-white rounded-lg hover:bg-blue-700 transition"
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
         >
           Confirmar
         </button>
       </div>
+
+      <p className="text-xs text-gray-500 mt-4">
+        * Este cálculo es una simulación. El proceso se completa en máximo 15 minutos.
+      </p>
     </div>
   );
 }

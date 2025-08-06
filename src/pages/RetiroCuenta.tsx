@@ -22,14 +22,10 @@ function RetiroCuenta() {
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
 
-  // 🔒 Redirigir si no hay login
   useEffect(() => {
-    if (!usuarioID) {
-      navigate("/");
-    }
+    if (!usuarioID) navigate("/");
   }, [usuarioID, navigate]);
 
-  // Si el usuario aún no está listo, mostramos mensaje
   if (!usuarioID) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -38,30 +34,27 @@ function RetiroCuenta() {
     );
   }
 
-  const montoQuetzales =
+  const totalSinComision =
     typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
-  const total = montoQuetzales * 0.85;
+  const comision = totalSinComision * 0.15;
+  const total = totalSinComision - comision;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
-
     if (cantidadWLD > saldoWLD) {
       alert(`No tienes suficiente saldo. Saldo disponible: ${saldoWLD} WLD`);
       return;
     }
-
     if (!banco || !tipoCuenta) {
       alert("Debes seleccionar el banco y el tipo de cuenta");
       return;
     }
-
     if (cuenta !== confirmarCuenta) {
-      alert("El número de cuenta no coincide. Por favor verifica.");
+      alert("El número de cuenta no coincide.");
       return;
     }
-
     if (total <= 0) {
       alert("El monto a recibir es menor al mínimo permitido.");
       return;
@@ -96,7 +89,6 @@ function RetiroCuenta() {
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
-
         setTransacciones([
           ...transacciones,
           {
@@ -112,7 +104,6 @@ function RetiroCuenta() {
             tipoCuenta,
           },
         ]);
-
         setMostrarResumen(false);
       } else {
         alert(`❌ Error: ${data.error}`);
@@ -130,21 +121,21 @@ function RetiroCuenta() {
       <p className="mb-2 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong>
       </p>
-      <p className="mb-6 text-gray-700">
-        Precio actual WLD: <strong>Q{precioWLD}</strong>
-      </p>
 
       {mostrarResumen ? (
-        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
-          <h2 className="text-lg font-semibold mb-4">Resumen del Retiro</h2>
-          <p className="mb-2"><strong>Banco:</strong> {banco}</p>
-          <p className="mb-2"><strong>Tipo de cuenta:</strong> {tipoCuenta}</p>
-          <p className="mb-2"><strong>Cuenta:</strong> {cuenta}</p>
-          <p className="mb-4">
-            Total a recibir (comisión 15% incluido):{" "}
-            <strong>Q{total.toFixed(2)}</strong>
+        <div className="bg-white p-6 rounded-xl shadow-md text-gray-800 w-full max-w-sm text-sm text-left">
+          <h2 className="text-lg font-semibold text-center text-purple-700 mb-4">Resumen del Retiro</h2>
+          <p><strong>Banco:</strong> {banco}</p>
+          <p><strong>Tipo de cuenta:</strong> {tipoCuenta}</p>
+          <p><strong>Cuenta:</strong> {cuenta}</p>
+          <p><strong>WLD a cambiar:</strong> {cantidadWLD}</p>
+          <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
+          <p><strong>Comisión (15%):</strong> Q{comision.toFixed(2)}</p>
+          <p className="text-green-700 font-bold text-base">
+            Total a recibir: Q{total.toFixed(2)}
           </p>
-          <div className="flex gap-4 justify-center">
+
+          <div className="flex justify-between mt-5">
             <button
               onClick={() => setMostrarResumen(false)}
               className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
@@ -153,7 +144,7 @@ function RetiroCuenta() {
             </button>
             <button
               onClick={confirmarRetiro}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
             >
               Confirmar
             </button>

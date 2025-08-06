@@ -4,7 +4,7 @@ import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD } = useUser();
+  const { usuarioID, saldoWLD, precioWLD } = useUser();
 
   useEffect(() => {
     if (!usuarioID) {
@@ -19,7 +19,8 @@ function Opciones() {
           ¿Cómo deseas cambiar tus Worldcoin?
         </h1>
         <p className="mb-4 text-gray-700">
-          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * 35).toFixed(2)}
+          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q
+          {(saldoWLD * precioWLD).toFixed(2)}
         </p>
 
         <div className="flex flex-col gap-4">

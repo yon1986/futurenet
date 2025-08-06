@@ -21,6 +21,7 @@ function Opciones() {
         <p className="mb-4 text-gray-700">
           Saldo actual: <strong>{saldoWLD} WLD</strong>
         </p>
+
         <div className="flex flex-col gap-4">
           <button
             onClick={() => navigate("/retiro-cuenta")}
@@ -39,6 +40,23 @@ function Opciones() {
             className="w-full py-3 bg-gray-300 text-gray-800 rounded-xl shadow hover:bg-gray-400 transition"
           >
             Ver Historial
+          </button>
+        </div>
+
+        {/* 🔻 Botones secundarios: Términos y ¿Cómo funciona? */}
+        <div className="mt-8 space-y-2">
+          <button
+            onClick={() => navigate("/como-funciona")}
+            className="text-sm text-gray-600 underline hover:text-gray-800 transition"
+          >
+            ¿Cómo funciona?
+          </button>
+          <br />
+          <button
+            onClick={() => navigate("/terminos")}
+            className="text-sm text-gray-600 underline hover:text-gray-800 transition"
+          >
+            Términos y condiciones
           </button>
         </div>
       </div>

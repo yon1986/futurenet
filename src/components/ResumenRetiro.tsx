@@ -4,7 +4,7 @@ interface Props {
   saldoDisponible: number;
   cantidadWLD: number;
   precioWLD: number;
-  sobrante: number; // 🆕 agregado para mostrar lo que queda como saldo
+  sobrante: number;
   onConfirmar: (telefono: string) => void;
   onCancelar: () => void;
 }
@@ -22,7 +22,7 @@ function ResumenRetiro({
 
   const totalSinComision = cantidadWLD * precioWLD;
   const comision = totalSinComision * 0.15;
-  const totalRecibir = totalSinComision - comision;
+  const totalRecibir = Math.floor((totalSinComision - comision) / 50) * 50;
 
   const handleConfirmar = () => {
     if (tel1 !== tel2 || tel1 === "") {
@@ -42,7 +42,11 @@ function ResumenRetiro({
 
       <div className="text-left space-y-1 mb-4">
         <p>
-          <strong>Saldo disponible:</strong> {saldoDisponible.toFixed(2)} WLD
+          <strong>Saldo disponible:</strong> {saldoDisponible.toFixed(2)} WLD ≈ Q
+          {(saldoDisponible * precioWLD).toFixed(2)}
+        </p>
+        <p>
+          <strong>Precio actual del WLD:</strong> Q{precioWLD}
         </p>
         <p>
           <strong>WLD a cambiar:</strong> {cantidadWLD} WLD
@@ -54,11 +58,9 @@ function ResumenRetiro({
           <strong>Comisión (15%):</strong> Q{comision.toFixed(2)}
         </p>
         <p className="text-green-700 font-bold text-base">
-          Total a recibir: Q
-          {Math.floor(totalRecibir / 50) * 50 /* Múltiplo de Q50 */}
+          Total a recibir: Q{totalRecibir}
         </p>
 
-        {/* 🟣 Mostrar sobrante si existe */}
         {sobrante > 0 && (
           <p className="text-gray-700 text-sm mt-2">
             🔒 Solo se puede retirar en múltiplos de Q50. El restante de{" "}

@@ -118,8 +118,11 @@ function RetiroCuenta() {
       <h1 className="text-xl font-semibold mb-4 text-gray-800">
         Retiro a Cuenta Bancaria
       </h1>
-      <p className="mb-2 text-gray-700">
-        Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * 35).toFixed(2)}
+      <p className="mb-1 text-gray-700">
+        Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
+      </p>
+      <p className="text-sm text-gray-600 mb-4">
+        Precio actual del WLD: <strong>Q{precioWLD}</strong>
       </p>
 
       {mostrarResumen ? (

@@ -30,7 +30,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [usuarioID, setUsuarioIDState] = useState<string | null>(null);
   const [saldoWLD, setSaldoWLDState] = useState<number>(0);
-  const [precioWLD] = useState<number>(35); // Precio fijo de ejemplo
+  const [precioWLD] = useState<number>(8); // Precio fijo de ejemplo
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
 
   const setUsuarioID = (id: string | null) => {

@@ -156,11 +156,12 @@ function RetiroCuenta() {
             ✅ Retiro solicitado
           </h2>
           <p className="mb-4">
-            Tu token de seguimiento es:{" "}
+            Tu token para reclamar el retiro es:{" "}
             <strong className="text-xl">{tokenGenerado}</strong>
           </p>
           <p className="text-sm text-gray-600 mb-4">
-            Un asesor confirmará el depósito en tu cuenta bancaria.
+            Envía este token por WhatsApp al <strong>35950933</strong> para
+            reclamar tu pago.
           </p>
           <button
             onClick={() => navigate("/historial")}

@@ -33,12 +33,15 @@ function Opciones() {
           >
             Retiro en cuenta bancaria
           </button>
+
           <button
             onClick={() => navigate("/retiro-cajero")}
-            className="w-full py-3 bg-green-600 text-white rounded-xl shadow-lg hover:bg-green-700 transition"
+            className="w-full py-3 bg-green-600 text-white rounded-xl shadow-lg hover:bg-green-700 transition leading-tight"
           >
-            Retiro en cajero
+            <div className="text-base font-semibold">Retiro en cajero</div>
+            <div className="text-xs text-green-100">(Transferencia móvil)</div>
           </button>
+
           <button
             onClick={() => navigate("/historial")}
             className="w-full py-3 bg-gray-300 text-gray-800 rounded-xl shadow hover:bg-gray-400 transition"

@@ -15,6 +15,7 @@ function RetiroCajero() {
   } = useUser();
 
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
+  const [telefono, setTelefono] = useState("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
   const [telefonoConfirmado, setTelefonoConfirmado] = useState<string | null>(null);
@@ -41,6 +42,11 @@ function RetiroCajero() {
 
     if (cantidadWLD > saldoWLD) {
       alert(`No tienes suficiente saldo. Saldo disponible: ${saldoWLD} WLD`);
+      return;
+    }
+
+    if (telefono.length !== 8) {
+      alert("El número de teléfono debe tener exactamente 8 dígitos.");
       return;
     }
 
@@ -128,7 +134,7 @@ function RetiroCajero() {
           precioWLD={precioWLD}
           sobrante={sobrante}
           onCancelar={() => setMostrarResumen(false)}
-          onConfirmar={confirmarRetiro}
+          onConfirmar={() => confirmarRetiro(telefono)}
         />
       ) : tokenGenerado ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
@@ -160,6 +166,8 @@ function RetiroCajero() {
           </label>
           <input
             type="number"
+            step="0.01"
+            min="0"
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
@@ -167,9 +175,25 @@ function RetiroCajero() {
             required
           />
 
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Número de teléfono"
+            value={telefono}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setTelefono(val);
+              }
+            }}
+            className="p-3 border border-gray-300 rounded-lg"
+            required
+          />
+
           <button
             type="submit"
-            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
+            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
           >
             Continuar
           </button>

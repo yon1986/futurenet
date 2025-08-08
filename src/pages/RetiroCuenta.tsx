@@ -1,3 +1,4 @@
+// src/pages/RetiroCuenta.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
@@ -18,6 +19,7 @@ function RetiroCuenta() {
   const [cuenta, setCuenta] = useState("");
   const [confirmarCuenta, setConfirmarCuenta] = useState("");
   const [tipoCuenta, setTipoCuenta] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
@@ -56,6 +58,10 @@ function RetiroCuenta() {
       alert("El número de cuenta no coincide.");
       return;
     }
+    if (telefono.length !== 8) {
+      alert("El número de teléfono debe tener exactamente 8 dígitos.");
+      return;
+    }
     if (total < 1) {
       alert("El monto a recibir es demasiado bajo. Aumenta la cantidad a cambiar.");
       return;
@@ -82,6 +88,7 @@ function RetiroCuenta() {
           banco,
           cuenta,
           tipoCuenta,
+          telefono,
         }),
       });
 
@@ -103,6 +110,7 @@ function RetiroCuenta() {
             banco,
             cuenta,
             tipoCuenta,
+            telefono,
           },
         ]);
         setMostrarResumen(false);
@@ -224,11 +232,28 @@ function RetiroCuenta() {
             className="p-3 border border-gray-300 rounded-lg"
             required
           />
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Número de teléfono"
+            value={telefono}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setTelefono(val);
+              }
+            }}
+            className="p-3 border border-gray-300 rounded-lg"
+            required
+          />
           <label className="font-semibold text-sm">
             ¿Cuántos Worldcoin deseas cambiar?
           </label>
           <input
             type="number"
+            step="0.01"
+            min="0"
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}

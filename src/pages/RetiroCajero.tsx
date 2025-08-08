@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
-import ResumenRetiro from "../components/ResumenRetiro";
 
 function RetiroCajero() {
   const navigate = useNavigate();
@@ -15,10 +14,10 @@ function RetiroCajero() {
   } = useUser();
 
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
-  const [telefono, setTelefono] = useState("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
-  const [telefonoConfirmado, setTelefonoConfirmado] = useState<string | null>(null);
+  const [telefono, setTelefono] = useState("");
+  const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [sobrante, setSobrante] = useState<number>(0);
 
   useEffect(() => {
@@ -45,11 +44,6 @@ function RetiroCajero() {
       return;
     }
 
-    if (telefono.length !== 8) {
-      alert("El número de teléfono debe tener exactamente 8 dígitos.");
-      return;
-    }
-
     const montoQ = cantidadWLD * precioWLD;
     const totalSinComision = montoQ * 0.85;
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
@@ -66,10 +60,18 @@ function RetiroCajero() {
     setMostrarResumen(true);
   };
 
-  const confirmarRetiro = async (telefono: string) => {
-    if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
+  const confirmarRetiro = async () => {
+    if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
+      alert("El número de teléfono debe tener exactamente 8 dígitos.");
+      return;
+    }
 
-    const montoQ = cantidadWLD * precioWLD;
+    if (telefono !== confirmarTelefono) {
+      alert("Los números de teléfono no coinciden.");
+      return;
+    }
+
+    const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
     const totalSinComision = montoQ * 0.85;
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
 
@@ -93,8 +95,6 @@ function RetiroCajero() {
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
-        setTelefonoConfirmado(telefono);
-
         setTransacciones([
           ...transacciones,
           {
@@ -107,7 +107,6 @@ function RetiroCajero() {
             telefono,
           },
         ]);
-
         setMostrarResumen(false);
       } else {
         alert(`❌ Error: ${data.error}`);
@@ -116,6 +115,10 @@ function RetiroCajero() {
       alert("Error al conectar con el servidor");
     }
   };
+
+  const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
+  const totalSinComision = montoQ * 0.85;
+  const totalARecibir = Math.floor(totalSinComision / 50) * 50;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-gradient-to-b from-purple-50 to-purple-100">
@@ -128,14 +131,71 @@ function RetiroCajero() {
       </p>
 
       {mostrarResumen ? (
-        <ResumenRetiro
-          saldoDisponible={saldoWLD}
-          cantidadWLD={typeof cantidadWLD === "number" ? cantidadWLD : 0}
-          precioWLD={precioWLD}
-          sobrante={sobrante}
-          onCancelar={() => setMostrarResumen(false)}
-          onConfirmar={() => confirmarRetiro(telefono)}
-        />
+        <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-sm">
+          <h2 className="text-lg font-semibold text-center text-purple-700 mb-4">
+            Resumen del Retiro
+          </h2>
+          <p><strong>Saldo disponible:</strong> {saldoWLD} WLD ≈ Q{(saldoWLD * precioWLD).toFixed(2)}</p>
+          <p><strong>Precio actual del WLD:</strong> Q{precioWLD}</p>
+          <p><strong>WLD a cambiar:</strong> {cantidadWLD}</p>
+          <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
+          <p><strong>Comisión (15%):</strong> Q{(totalSinComision * 0.15).toFixed(2)}</p>
+          <p className="text-green-700 font-bold text-base">Total a recibir: Q{totalARecibir}</p>
+          <p className="text-xs mt-2 text-gray-600">
+            🔒 Solo se puede retirar en múltiplos de Q50. El restante de <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo en tu cuenta Worldcoin.
+          </p>
+
+          {/* NUEVOS CAMPOS DE TELÉFONO */}
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Número de teléfono"
+            value={telefono}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setTelefono(val);
+              }
+            }}
+            className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
+            required
+          />
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Confirmar número de teléfono"
+            value={confirmarTelefono}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setConfirmarTelefono(val);
+              }
+            }}
+            className="p-3 border border-gray-300 rounded-lg w-full"
+            required
+          />
+
+          <div className="flex justify-between mt-5">
+            <button
+              onClick={() => setMostrarResumen(false)}
+              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmarRetiro}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              Confirmar
+            </button>
+          </div>
+
+          <p className="text-xs text-center text-gray-500 mt-4">
+            * Este cálculo es una simulación. El proceso se completa en máximo 15 minutos.
+          </p>
+        </div>
       ) : tokenGenerado ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
           <h2 className="text-lg font-semibold mb-4 text-green-600">
@@ -146,8 +206,7 @@ function RetiroCajero() {
             <strong className="text-xl">{tokenGenerado}</strong>
           </p>
           <p className="text-sm text-gray-600 mb-4">
-            Envía este token por WhatsApp al <strong>35950933</strong> para
-            reclamar tu pago.
+            Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.
           </p>
           <button
             onClick={() => navigate("/historial")}
@@ -172,22 +231,6 @@ function RetiroCajero() {
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
             className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
-
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="Número de teléfono"
-            value={telefono}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setTelefono(val);
-              }
-            }}
-            className="p-3 border border-gray-300 rounded-lg"
             required
           />
 

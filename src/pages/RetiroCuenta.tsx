@@ -1,4 +1,3 @@
-// src/pages/RetiroCuenta.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
@@ -20,6 +19,7 @@ function RetiroCuenta() {
   const [confirmarCuenta, setConfirmarCuenta] = useState("");
   const [tipoCuenta, setTipoCuenta] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
@@ -58,10 +58,6 @@ function RetiroCuenta() {
       alert("El número de cuenta no coincide.");
       return;
     }
-    if (telefono.length !== 8) {
-      alert("El número de teléfono debe tener exactamente 8 dígitos.");
-      return;
-    }
     if (total < 1) {
       alert("El monto a recibir es demasiado bajo. Aumenta la cantidad a cambiar.");
       return;
@@ -71,6 +67,16 @@ function RetiroCuenta() {
   };
 
   const confirmarRetiro = async () => {
+    if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
+      alert("El número de teléfono debe tener exactamente 8 dígitos.");
+      return;
+    }
+
+    if (telefono !== confirmarTelefono) {
+      alert("Los números de teléfono no coinciden.");
+      return;
+    }
+
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
     try {
@@ -147,6 +153,38 @@ function RetiroCuenta() {
             Total a recibir: Q{total.toFixed(2)}
           </p>
 
+          {/* ✅ Campos de confirmación de teléfono */}
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Número de teléfono"
+            value={telefono}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setTelefono(val);
+              }
+            }}
+            className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
+            required
+          />
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Confirmar número de teléfono"
+            value={confirmarTelefono}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setConfirmarTelefono(val);
+              }
+            }}
+            className="p-3 border border-gray-300 rounded-lg w-full"
+            required
+          />
+
           <div className="flex justify-between mt-5">
             <button
               onClick={() => setMostrarResumen(false)}
@@ -220,7 +258,12 @@ function RetiroCuenta() {
             type="text"
             placeholder="Número de cuenta"
             value={cuenta}
-            onChange={(e) => setCuenta(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setCuenta(val);
+              }
+            }}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />
@@ -228,20 +271,10 @@ function RetiroCuenta() {
             type="text"
             placeholder="Confirmar número de cuenta"
             value={confirmarCuenta}
-            onChange={(e) => setConfirmarCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          />
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="Número de teléfono"
-            value={telefono}
             onChange={(e) => {
               const val = e.target.value;
               if (/^\d*$/.test(val)) {
-                setTelefono(val);
+                setConfirmarCuenta(val);
               }
             }}
             className="p-3 border border-gray-300 rounded-lg"

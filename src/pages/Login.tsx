@@ -1,3 +1,4 @@
+// src/pages/Login.tsx
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 
@@ -5,12 +6,11 @@ function Login() {
   const navigate = useNavigate();
   const { setUsuarioID, setSaldoWLD } = useUser();
 
-  // Modo demo (único método de acceso por ahora)
+  // 🔹 Login demo
   const handleDemo = async () => {
     const id = "usuario_prueba";
     setUsuarioID(id);
 
-    // Consultar saldo desde la API
     try {
       const res = await fetch("/api/saldo", {
         method: "POST",
@@ -38,7 +38,15 @@ function Login() {
           Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
         </p>
 
-        {/* Modo demo */}
+        {/* 🌍 Nuevo login con World ID */}
+        <button
+          onClick={() => navigate("/login-worldid")}
+          className="w-full py-4 mb-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg font-semibold shadow-lg transition"
+        >
+          🌍 Iniciar con World ID
+        </button>
+
+        {/* 🚀 Login demo (igual que antes) */}
         <button
           onClick={handleDemo}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-lg font-semibold shadow-lg transition"

@@ -1,26 +1,28 @@
+// src/App.tsx
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { UserProvider } from "./context/UserContext";
+
+// Páginas existentes
 import Login from "./pages/Login";
 import Bienvenida from "./pages/Bienvenida";
 import Opciones from "./pages/Opciones";
 import RetiroCajero from "./pages/RetiroCajero";
 import RetiroCuenta from "./pages/RetiroCuenta";
 import Historial from "./pages/Historial";
-import { UserProvider } from "./context/UserContext";
-
-// Pantallas adicionales
 import Terminos from "./pages/Terminos";
 import ComoFunciona from "./pages/ComoFunciona";
-import { useEffect } from "react";
+
+// Nueva página (World ID)
+import LoginWorldID from "./pages/LoginWorldID";
 
 function TerminosInicio() {
   const navigate = useNavigate();
-
   useEffect(() => {
-    // Redirige a Términos con el estado "desdeInicio: true"
+    // Redirige a Términos con el estado { desdeInicio: true }
     navigate("/terminos", { state: { desdeInicio: true } });
   }, [navigate]);
-
-  return null; // Pantalla intermedia sin mostrar nada
+  return null;
 }
 
 function App() {
@@ -29,11 +31,14 @@ function App() {
       <BrowserRouter>
         <UserProvider>
           <Routes>
-            {/* Redirige desde "/" a Términos con estado */}
+            {/* Inicio → Términos */}
             <Route path="/" element={<TerminosInicio />} />
 
-            {/* Resto de rutas */}
+            {/* Logins */}
             <Route path="/login" element={<Login />} />
+            <Route path="/login-worldid" element={<LoginWorldID />} />
+
+            {/* Flujo normal */}
             <Route path="/bienvenida" element={<Bienvenida />} />
             <Route path="/opciones" element={<Opciones />} />
             <Route path="/retiro-cajero" element={<RetiroCajero />} />

@@ -1,61 +1,86 @@
 // src/pages/LoginWorldID.tsx
-import React, { useEffect, useRef } from "react";
-import { IDKitWidget, ISuccessResult, VerificationLevel } from "@worldcoin/idkit";
+import React, { useEffect, useState } from "react";
+import {
+  MiniKit,
+  VerifyCommandInput,
+  VerificationLevel,
+  ISuccessResult,
+} from "@worldcoin/minikit-js";
 import { useNavigate } from "react-router-dom";
-// ⚠️ Aún no tocamos tu UserContext; cuando nos lo pases lo integramos aquí:
 import { useUser } from "../context/UserContext";
 
 const LoginWorldID: React.FC = () => {
   const { setUsuarioID } = useUser();
   const navigate = useNavigate();
-  const openRef = useRef<null | (() => void)>(null);
+  const [estado, setEstado] = useState<"cargando" | "listo" | "error">("cargando");
+  const [mensaje, setMensaje] = useState<string>("Iniciando verificación…");
 
-  // Auto-abrir modal al montar
-  useEffect(() => {
-    const id = setTimeout(() => openRef.current?.(), 200);
-    return () => clearTimeout(id);
-  }, []);
+  const ejecutarVerificacion = async () => {
+    try {
+      // Asegúrate de abrir esto DENTRO de World App (Mini App)
+      if (!MiniKit.isInstalled()) {
+        setEstado("error");
+        setMensaje(
+          "Abrí esta Mini App desde World App para verificar con World ID."
+        );
+        return;
+      }
 
-  const onSuccess = (result: ISuccessResult) => {
-    // Guardamos el usuario (luego lo afinamos cuando nos compartas tu UserContext)
-    setUsuarioID(result.nullifier_hash);
-    navigate("/bienvenida");
+      const payload: VerifyCommandInput = {
+        action: "futurenet-login", // tu Action ID del portal
+        verification_level: VerificationLevel.Orb, // Orb o Device
+      };
+
+      // World App abrirá un 'drawer' nativo con el botón Aprobar
+      const { finalPayload } = await MiniKit.commandsAsync.verify(payload);
+
+      if (finalPayload.status === "error") {
+        setEstado("error");
+        setMensaje("La verificación fue cancelada. Intenta de nuevo.");
+        return;
+      }
+
+      // Éxito: obtenemos el proof y el nullifier_hash
+      const result = finalPayload as ISuccessResult;
+
+      // (Luego lo validamos en backend; por ahora guardamos el usuario)
+      setUsuarioID(result.nullifier_hash);
+      navigate("/bienvenida");
+    } catch (e) {
+      setEstado("error");
+      setMensaje("No se pudo iniciar la verificación. Reintenta.");
+    }
   };
 
-  const handleVerify = async (result: ISuccessResult) => {
-    console.log("🔍 Proof recibido (enviar a backend más adelante):", result);
+  useEffect(() => {
+    setEstado("cargando");
+    setMensaje("Iniciando verificación…");
+    ejecutarVerificacion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const reintentar = () => {
+    setEstado("cargando");
+    setMensaje("Reintentando…");
+    ejecutarVerificacion();
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-purple-200">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
-        <h1 className="text-2xl font-bold mb-4 text-gray-800">
-          Inicia sesión con <span className="text-purple-600">World ID</span>
+        <h1 className="text-2xl font-bold mb-2 text-gray-800">
+          Verificación con <span className="text-purple-600">World ID</span>
         </h1>
-        <p className="text-gray-600 mb-6 text-sm">
-          Abriendo el verificador… Si no se abre, toca el botón.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{mensaje}</p>
 
-        <IDKitWidget
-          app_id="app_16e531ba60f3f22005fa73b1bd8fb93f"
-          action="futurenet-login"
-          verification_level={VerificationLevel.Orb}
-          handleVerify={handleVerify}
-          onSuccess={onSuccess}
-          language="es"
-        >
-          {({ open }) => {
-            openRef.current = open;
-            return (
-              <button
-                onClick={open}
-                className="w-full py-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold shadow-lg transition"
-              >
-                🌍 Iniciar con World ID
-              </button>
-            );
-          }}
-        </IDKitWidget>
+        {estado === "error" && (
+          <button
+            onClick={reintentar}
+            className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-base font-semibold shadow-lg transition"
+          >
+            Reintentar verificación
+          </button>
+        )}
 
         <button
           onClick={() => navigate("/terminos")}

@@ -1,3 +1,4 @@
+// src/pages/Terminos.tsx
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -8,7 +9,8 @@ const Terminos: React.FC = () => {
 
   const handleClick = () => {
     if (desdeInicio) {
-      navigate("/login");
+      // Ir directo al login de World ID (sin pantalla intermedia)
+      navigate("/login-worldid");
     } else {
       navigate("/opciones");
     }
@@ -36,8 +38,8 @@ const Terminos: React.FC = () => {
             la transacción.
           </p>
           <p>
-            El servicio aplica una comisión del <strong>15%</strong>, ya incluida en el
-            cálculo mostrado dentro de la aplicación.
+            El servicio aplica una comisión del <strong>15%</strong>, ya incluida en el cálculo
+            mostrado dentro de la aplicación.
           </p>
           <p>
             Si seleccionas retiro por cajero, se te enviará un código de transferencia al WhatsApp

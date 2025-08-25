@@ -1,61 +1,16 @@
 // src/pages/Login.tsx
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../context/UserContext";
 
 function Login() {
   const navigate = useNavigate();
-  const { setUsuarioID, setSaldoWLD } = useUser();
 
-  // 🔹 Login demo
-  const handleDemo = async () => {
-    const id = "usuario_prueba";
-    setUsuarioID(id);
+  useEffect(() => {
+    // Redirige siempre al login con World ID
+    navigate("/login-worldid", { replace: true });
+  }, [navigate]);
 
-    try {
-      const res = await fetch("/api/saldo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuarioID: id }),
-      });
-      const data = await res.json();
-      if (data.saldo !== undefined) {
-        setSaldoWLD(data.saldo);
-      }
-    } catch (error) {
-      alert("Error al consultar el saldo");
-    }
-
-    navigate("/bienvenida");
-  };
-
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-purple-200">
-      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
-        <h1 className="text-3xl font-bold mb-4 text-gray-800">
-          Bienvenido a <span className="text-purple-600">Futurenet</span>
-        </h1>
-        <p className="text-gray-600 mb-6">
-          Cambia tus <strong>Worldcoin</strong> por quetzales de forma rápida y segura.
-        </p>
-
-        {/* 🌍 Nuevo login con World ID */}
-        <button
-          onClick={() => navigate("/login-worldid")}
-          className="w-full py-4 mb-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg font-semibold shadow-lg transition"
-        >
-          🌍 Iniciar con World ID
-        </button>
-
-        {/* 🚀 Login demo (igual que antes) */}
-        <button
-          onClick={handleDemo}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-lg font-semibold shadow-lg transition"
-        >
-          🚀 Iniciar en modo demo
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 export default Login;

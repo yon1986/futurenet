@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { UserProvider } from "./context/UserContext";
 
 // Páginas
-import Login from "./pages/Login";
+import Login from "./pages/Login"; // ahora solo redirige a /login-worldid
 import Bienvenida from "./pages/Bienvenida";
 import Opciones from "./pages/Opciones";
 import RetiroCajero from "./pages/RetiroCajero";
@@ -12,17 +12,15 @@ import RetiroCuenta from "./pages/RetiroCuenta";
 import Historial from "./pages/Historial";
 import Terminos from "./pages/Terminos";
 import ComoFunciona from "./pages/ComoFunciona";
-
-// Nueva página World ID
 import LoginWorldID from "./pages/LoginWorldID";
 
 function TerminosInicio() {
   const navigate = useNavigate();
   useEffect(() => {
-    // Redirige a Términos con el estado { desdeInicio: true }
+    // Redirige a Términos con el estado "desdeInicio: true"
     navigate("/terminos", { state: { desdeInicio: true } });
   }, [navigate]);
-  return null;
+  return null; // Pantalla intermedia sin mostrar nada
 }
 
 function App() {
@@ -31,10 +29,10 @@ function App() {
       <BrowserRouter>
         <UserProvider>
           <Routes>
-            {/* Inicio → Términos */}
+            {/* Redirige desde "/" a Términos con estado */}
             <Route path="/" element={<TerminosInicio />} />
 
-            {/* Login */}
+            {/* Login y World ID */}
             <Route path="/login" element={<Login />} />
             <Route path="/login-worldid" element={<LoginWorldID />} />
 

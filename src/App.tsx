@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { UserProvider } from "./context/UserContext";
 
-// Páginas existentes
+// Páginas
 import Login from "./pages/Login";
 import Bienvenida from "./pages/Bienvenida";
 import Opciones from "./pages/Opciones";
@@ -13,7 +13,7 @@ import Historial from "./pages/Historial";
 import Terminos from "./pages/Terminos";
 import ComoFunciona from "./pages/ComoFunciona";
 
-// Nueva página (World ID)
+// Nueva página World ID
 import LoginWorldID from "./pages/LoginWorldID";
 
 function TerminosInicio() {
@@ -34,7 +34,7 @@ function App() {
             {/* Inicio → Términos */}
             <Route path="/" element={<TerminosInicio />} />
 
-            {/* Logins */}
+            {/* Login */}
             <Route path="/login" element={<Login />} />
             <Route path="/login-worldid" element={<LoginWorldID />} />
 

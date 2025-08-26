@@ -1,33 +1,69 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
-);
+// --- Auth por cookie ---
+/* eslint-disable @typescript-eslint/no-var-requires */
+// @ts-ignore
+const { verifySession } = require('./_lib/session');
+
+function getSessionFromCookie(req: VercelRequest) {
+  const cookie = req.headers?.cookie || '';
+  const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
+  const token = m && m[1];
+  return verifySession(token);
+}
+
+// --- Supabase ---
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  try {
-    const { 
-      usuarioID, 
-      cantidadWLD, 
-      tipo, 
-      montoQ, 
-      nombre, 
-      banco, 
-      cuenta, 
-      tipoCuenta,
-      telefono
-    } = req.body;
+  // ✅ Requiere sesión válida (World ID verificado)
+  const session = getSessionFromCookie(req);
+  if (!session) return res.status(401).json({ error: 'unauthorized' });
 
-    // Validar datos principales
-    if (!usuarioID || !cantidadWLD || !tipo || !montoQ) {
+  // (opcional) exigir nivel Orb
+  if (String(session.lvl).toLowerCase() !== 'orb') {
+    return res.status(403).json({ error: 'verification_level_not_allowed' });
+  }
+
+  try {
+    const {
+      // usuarioID del body se ignora (tomamos el del cookie)
+      cantidadWLD,
+      tipo,
+      montoQ,
+      nombre,
+      banco,
+      cuenta,
+      tipoCuenta,
+      telefono,
+    } = req.body as {
+      cantidadWLD?: number;
+      tipo?: 'bancaria' | 'cajero';
+      montoQ?: number;
+      nombre?: string;
+      banco?: string;
+      cuenta?: string;
+      tipoCuenta?: string;
+      telefono?: string;
+    };
+
+    // Validación básica
+    if (
+      typeof cantidadWLD !== 'number' ||
+      cantidadWLD <= 0 ||
+      !tipo ||
+      typeof montoQ !== 'number' ||
+      montoQ <= 0
+    ) {
       return res.status(400).json({ error: 'Datos incompletos' });
     }
+
+    const usuarioID = session.sub as string;
 
     // Verificar usuario en Supabase
     const { data: usuario, error: userError } = await supabase
@@ -66,12 +102,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       wld_cambiados: cantidadWLD,
       monto_q: montoQ,
       token,
-      nombre: tipo === "bancaria" ? nombre || null : null,
-      banco: tipo === "bancaria" ? banco || null : null,
-      cuenta: tipo === "bancaria" ? cuenta || null : null,
-      tipo_cuenta: tipo === "bancaria" ? tipoCuenta || null : null,
-      telefono: tipo === "cajero" ? telefono || null : null,
-      created_at: new Date()
+      nombre: tipo === 'bancaria' ? nombre || null : null,
+      banco: tipo === 'bancaria' ? banco || null : null,
+      cuenta: tipo === 'bancaria' ? cuenta || null : null,
+      tipo_cuenta: tipo === 'bancaria' ? tipoCuenta || null : null,
+      telefono: tipo === 'cajero' ? telefono || null : null,
+      created_at: new Date(),
     });
 
     if (insertError) {
@@ -79,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({ ok: true, token, nuevoSaldo });
-  } catch (error) {
+  } catch (e) {
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

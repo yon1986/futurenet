@@ -11,33 +11,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
+  const { usuarioID } = req.body;
+
+  if (!usuarioID) {
+    return res.status(400).json({ error: 'Falta usuarioID' });
+  }
+
   try {
-    const { usuarioID } = req.body;
-
-    if (!usuarioID) {
-      return res.status(400).json({ error: 'Falta usuarioID' });
-    }
-
-    // Buscar usuario en Supabase
-    const { data: usuario, error } = await supabase
-      .from('usuarios')
-      .select('saldo_wld')
+    const { data, error } = await supabase
+      .from('transacciones')
+      .select(`
+        id,
+        tipo,
+        token,
+        monto_q,
+        wld_cambiados,
+        created_at,
+        nombre,
+        banco,
+        cuenta,
+        tipo_cuenta,
+        telefono
+      `)
       .eq('usuario_id', usuarioID)
-      .single();
+      .order('created_at', { ascending: false });
 
-    if (error || !usuario) {
-      // Si no existe, lo creamos automáticamente con saldo inicial
-      await supabase.from('usuarios').insert({
-        usuario_id: usuarioID,
-        saldo_wld: 10 // saldo inicial
-      });
-
-      return res.status(200).json({ saldo: 10 });
+    if (error) {
+      console.error("❌ Error consultando historial:", error);
+      return res.status(500).json({ error: 'Error consultando historial' });
     }
 
-    // Devolver saldo actual
-    return res.status(200).json({ saldo: usuario.saldo_wld });
+    return res.status(200).json({ transacciones: data });
   } catch (error) {
+    console.error("🔥 Error en el servidor:", error);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

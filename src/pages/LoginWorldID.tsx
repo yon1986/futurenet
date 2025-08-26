@@ -7,44 +7,66 @@ import {
   ISuccessResult,
 } from "@worldcoin/minikit-js";
 import { useNavigate } from "react-router-dom";
+// No cambiamos tu UserContext todavía, solo usamos setUsuarioID como acordamos
 import { useUser } from "../context/UserContext";
 
 const LoginWorldID: React.FC = () => {
   const { setUsuarioID } = useUser();
   const navigate = useNavigate();
-  const [estado, setEstado] = useState<"cargando" | "listo" | "error">("cargando");
-  const [mensaje, setMensaje] = useState<string>("Iniciando verificación…");
+  const [estado, setEstado] = useState<"cargando" | "error">("cargando");
+  const [mensaje, setMensaje] = useState("Iniciando verificación…");
 
   const ejecutarVerificacion = async () => {
     try {
-      // Asegúrate de abrir esto DENTRO de World App (Mini App)
+      // Debe ser true dentro de World App y con MiniKit.install() ya llamado en MiniKitProvider
       if (!MiniKit.isInstalled()) {
         setEstado("error");
-        setMensaje(
-          "Abrí esta Mini App desde World App para verificar con World ID."
-        );
+        setMensaje("Abre esta Mini App desde World App.");
         return;
       }
 
       const payload: VerifyCommandInput = {
-        action: "futurenet-login", // tu Action ID del portal
-        verification_level: VerificationLevel.Orb, // Orb o Device
+        action: "futurenet-login",
+        verification_level: VerificationLevel.Orb, // exige verificación vía Orb
       };
 
-      // World App abrirá un 'drawer' nativo con el botón Aprobar
+      // Abre el drawer nativo con el botón "Aprobar"
       const { finalPayload } = await MiniKit.commandsAsync.verify(payload);
 
-      if (finalPayload.status === "error") {
+      // Si el usuario cancela o hay error en el drawer
+      if ((finalPayload as any)?.status === "error") {
         setEstado("error");
         setMensaje("La verificación fue cancelada. Intenta de nuevo.");
         return;
       }
 
-      // Éxito: obtenemos el proof y el nullifier_hash
-      const result = finalPayload as ISuccessResult;
+      // finalPayload incluye proof, nullifier_hash, merkle_root, verification_level, etc.
+      const fp: any = finalPayload;
 
-      // (Luego lo validamos en backend; por ahora guardamos el usuario)
-      setUsuarioID(result.nullifier_hash);
+      // Enviar el proof al backend para verificación oficial
+      const resp = await fetch("/api/worldid/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proof: fp.proof,
+          merkle_root: fp.merkle_root,
+          nullifier_hash: fp.nullifier_hash,
+          verification_level: fp.verification_level,
+          action: "futurenet-login",
+          signal_hash: fp.signal_hash, // puede no venir; lo enviamos si existe
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data?.ok) {
+        setEstado("error");
+        setMensaje("No se pudo verificar la prueba. Intenta de nuevo.");
+        return;
+      }
+
+      // ✅ Verificación confirmada por el backend
+      setUsuarioID(fp.nullifier_hash);
       navigate("/bienvenida");
     } catch (e) {
       setEstado("error");
@@ -53,17 +75,9 @@ const LoginWorldID: React.FC = () => {
   };
 
   useEffect(() => {
-    setEstado("cargando");
-    setMensaje("Iniciando verificación…");
     ejecutarVerificacion();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const reintentar = () => {
-    setEstado("cargando");
-    setMensaje("Reintentando…");
-    ejecutarVerificacion();
-  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-50 to-purple-200">
@@ -75,7 +89,7 @@ const LoginWorldID: React.FC = () => {
 
         {estado === "error" && (
           <button
-            onClick={reintentar}
+            onClick={ejecutarVerificacion}
             className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-base font-semibold shadow-lg transition"
           >
             Reintentar verificación

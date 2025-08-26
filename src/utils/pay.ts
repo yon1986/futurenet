@@ -1,15 +1,11 @@
 // src/utils/pay.ts
 import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from "@worldcoin/minikit-js";
 
-/**
- * Ejecuta el cobro via MiniKit Pay.
- * - Si el backend confirma enseguida → { status: "confirmed", ... }
- * - Si aún está minando → { status: "processing", payload: finalPayload }
- */
-export async function cobrarWLD(amountWLD: number): Promise<
+export type CobroOk =
   | { status: "confirmed"; credited: number; saldo: number; reference?: string }
-  | { status: "processing"; payload: any; reference?: string }
-> {
+  | { status: "processing"; reference: string };
+
+export async function cobrarWLD(amountWLD: number): Promise<CobroOk> {
   if (!MiniKit.isInstalled()) {
     throw new Error("Abre esta mini app desde World App para poder pagar.");
   }
@@ -17,7 +13,7 @@ export async function cobrarWLD(amountWLD: number): Promise<
     throw new Error("Monto inválido.");
   }
 
-  // 1) reference + address desde backend
+  // 1) iniciar
   const r = await fetch("/api/pay/initiate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -29,7 +25,7 @@ export async function cobrarWLD(amountWLD: number): Promise<
     throw new Error(init?.error || "No se pudo iniciar el pago.");
   }
 
-  // 2) Ejecutar Pay
+  // 2) pay
   const payload: PayCommandInput = {
     reference: init.reference,
     to: init.to,
@@ -48,7 +44,7 @@ export async function cobrarWLD(amountWLD: number): Promise<
     throw new Error("Pago cancelado o fallido.");
   }
 
-  // 3) Confirmación rápida en backend
+  // 3) primera confirmación (guarda tx_id y puede confirmar al tiro)
   const c = await fetch("/api/pay/confirm", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -56,18 +52,22 @@ export async function cobrarWLD(amountWLD: number): Promise<
     body: JSON.stringify({ payload: finalPayload }),
   });
 
-  // maneja 401 aquí mismo
-  if (c.status === 401) {
-    throw new Error("SESSION_EXPIRED");
-  }
+  if (c.status === 401) throw new Error("SESSION_EXPIRED");
 
   const confirm = await c.json().catch(() => ({}));
 
   if (c.ok && confirm?.status === "confirmed") {
-    return { status: "confirmed", credited: Number(confirm?.credited || 0), saldo: Number(confirm?.saldo || 0), reference: confirm?.reference };
+    return {
+      status: "confirmed",
+      credited: Number(confirm?.credited || 0),
+      saldo: Number(confirm?.saldo || 0),
+      reference: confirm?.reference || init.reference,
+    };
   }
+
   if (c.ok && confirm?.status === "processing") {
-    return { status: "processing", payload: finalPayload, reference: confirm?.reference };
+    // devolvemos solo la referencia; el front seguirá con /api/pay/status
+    return { status: "processing", reference: confirm?.reference || init.reference };
   }
 
   throw new Error(confirm?.error || "No se pudo confirmar el pago.");

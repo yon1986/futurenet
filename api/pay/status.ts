@@ -1,4 +1,4 @@
-// api/pay/confirm.ts
+// api/pay/status.ts
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 // @ts-ignore
@@ -28,48 +28,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
-
   const usuarioID = session.sub as string;
 
   try {
-    const { payload } = (req.body || {}) as { payload?: any };
-    if (!payload?.reference || !payload?.transaction_id) {
-      return res.status(400).json({ error: "invalid_payload" });
-    }
+    const { reference } = (req.body || {}) as { reference?: string };
+    if (!reference) return res.status(400).json({ error: "missing_reference" });
 
-    const { data: pay, error: qErr } = await supabase
+    const { data: pay, error } = await supabase
       .from("payments")
       .select("*")
-      .eq("reference", payload.reference)
+      .eq("reference", reference)
       .single();
 
-    if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
+    if (error || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
-    // si ya quedó, respondemos
     if (pay.status === "confirmed") {
       const { data: user } = await supabase.from("usuarios").select("*").eq("usuario_id", usuarioID).single();
-      return res.status(200).json({
-        ok: true,
-        status: "confirmed",
-        reference: pay.reference,
-        credited: pay.amount_wld,
-        saldo: user?.saldo_wld,
-      });
+      return res.status(200).json({ ok: true, status: "confirmed", credited: pay.amount_wld, saldo: user?.saldo_wld, reference });
     }
     if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
-
-    // Guardar tx_id (si aún no lo guardamos)
-    if (!pay.tx_id) {
-      await supabase.from("payments").update({ tx_id: payload.transaction_id }).eq("id", pay.id);
-    }
+    if (!pay.tx_id) return res.status(200).json({ ok: true, status: "processing", reference });
 
     const appId = process.env.APP_ID;
     const apiKey = process.env.DEV_PORTAL_API_KEY;
     if (!appId || !apiKey) return res.status(500).json({ error: "missing_portal_creds" });
 
-    // Consulta rápida: si ya minó, confirmamos; si no, dejamos "processing"
-    const tx = await fetchTxOnce(payload.transaction_id, appId, apiKey);
+    const tx = await fetchTxOnce(pay.tx_id, appId, apiKey);
 
     if (tx?.transaction_status === "failed") {
       await supabase.from("payments").update({ status: "failed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
@@ -80,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (pay.status !== "processing") {
         await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
       }
-      return res.status(200).json({ ok: true, status: "processing", reference: pay.reference });
+      return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
     // Validaciones finales
@@ -94,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "recipient_mismatch" });
     }
 
-    // Confirmar y acreditar saldo
+    // Confirmar y acreditar
     await supabase.from("payments").update({ status: "confirmed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
 
     const { data: user } = await supabase.from("usuarios").select("*").eq("usuario_id", usuarioID).single();
@@ -102,11 +87,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!user) {
       await supabase.from("usuarios").insert({ usuario_id: usuarioID, saldo_wld: acreditado });
-      return res.status(200).json({ ok: true, status: "confirmed", reference: pay.reference, credited: acreditado, saldo: acreditado, tx });
+      return res.status(200).json({ ok: true, status: "confirmed", credited: acreditado, saldo: acreditado, reference, tx });
     } else {
       const nuevoSaldo = Number(user.saldo_wld || 0) + acreditado;
       await supabase.from("usuarios").update({ saldo_wld: nuevoSaldo }).eq("usuario_id", usuarioID);
-      return res.status(200).json({ ok: true, status: "confirmed", reference: pay.reference, credited: acreditado, saldo: nuevoSaldo, tx });
+      return res.status(200).json({ ok: true, status: "confirmed", credited: acreditado, saldo: nuevoSaldo, reference, tx });
     }
   } catch (e: any) {
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });

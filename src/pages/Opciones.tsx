@@ -1,54 +1,23 @@
 // src/pages/Opciones.tsx
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useWallet } from "@worldcoin/idkit";
-import { ethers } from "ethers";
-
-// contrato oficial de WLD en Optimism
-const WLD_CONTRACT = "0x3030C44b3f8E8fE7A1A1e3F8D4426b6E31e0d3B9";
-const ERC20_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function decimals() view returns (uint8)"
-];
+import { useUser } from "../context/UserContext";
 
 // Tipo de cambio USD → GTQ que usa World App
 const TIPO_CAMBIO_GTQ = 7.65;
 
 function Opciones() {
   const navigate = useNavigate();
-  const { address } = useWallet();
+  const { usuarioID, saldoWLD } = useUser();
 
-  const [saldoWLD, setSaldoWLD] = useState<number>(0);
   const [precioWLD, setPrecioWLD] = useState<number>(0);
 
-  // Redirigir si no hay sesión iniciada
+  // Redirigir si no hay sesión
   useEffect(() => {
-    if (!address) navigate("/");
-  }, [address, navigate]);
+    if (!usuarioID) navigate("/");
+  }, [usuarioID, navigate]);
 
-  // Obtener saldo real en WLD de la blockchain
-  useEffect(() => {
-    if (!address) return;
-
-    async function fetchBalance() {
-      try {
-        const provider = new ethers.JsonRpcProvider("https://mainnet.optimism.io");
-        const contract = new ethers.Contract(WLD_CONTRACT, ERC20_ABI, provider);
-
-        const rawBalance = await contract.balanceOf(address);
-        const decimals = await contract.decimals();
-        const formatted = parseFloat(ethers.formatUnits(rawBalance, decimals));
-
-        setSaldoWLD(formatted);
-      } catch (err) {
-        console.error("Error obteniendo saldo:", err);
-      }
-    }
-
-    fetchBalance();
-  }, [address]);
-
-  // Obtener precio WLD en GTQ (ajustado al que usa World App)
+  // Obtener precio WLD en GTQ desde CoinGecko (ajustado a World App)
   useEffect(() => {
     async function fetchPrecio() {
       try {

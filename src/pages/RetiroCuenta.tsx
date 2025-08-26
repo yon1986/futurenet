@@ -1,3 +1,4 @@
+// src/pages/RetiroCuenta.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
@@ -85,8 +86,9 @@ function RetiroCuenta() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "same-origin", // asegura que se envíe la cookie de sesión
         body: JSON.stringify({
-          usuarioID,
+          // 👇 ya NO enviamos usuarioID, el backend lo toma del cookie
           cantidadWLD,
           tipo: "bancaria",
           montoQ: total,
@@ -97,6 +99,12 @@ function RetiroCuenta() {
           telefono,
         }),
       });
+
+      if (res.status === 401) {
+        alert("Tu sesión expiró. Inicia nuevamente con World ID.");
+        navigate("/login-worldid");
+        return;
+      }
 
       const data = await res.json();
 
@@ -121,7 +129,7 @@ function RetiroCuenta() {
         ]);
         setMostrarResumen(false);
       } else {
-        alert(`❌ Error: ${data.error}`);
+        alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
       }
     } catch (error) {
       alert("Error al conectar con el servidor");

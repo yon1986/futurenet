@@ -1,11 +1,10 @@
+// api/transferir.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-// --- Auth por cookie ---
-/* eslint-disable @typescript-eslint/no-var-requires */
+/* auth por cookie */
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
-
 function getSessionFromCookie(req: VercelRequest) {
   const cookie = req.headers?.cookie || '';
   const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
@@ -13,46 +12,31 @@ function getSessionFromCookie(req: VercelRequest) {
   return verifySession(token);
 }
 
-// --- Supabase ---
+/* supabase */
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
-  // ✅ Requiere sesión válida (World ID verificado)
+  // ✅ exige sesión World ID
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: 'unauthorized' });
-
-  // (opcional) exigir nivel Orb
   if (String(session.lvl).toLowerCase() !== 'orb') {
     return res.status(403).json({ error: 'verification_level_not_allowed' });
   }
 
   try {
     const {
-      // usuarioID del body se ignora (tomamos el del cookie)
       cantidadWLD,
-      tipo,
+      tipo,        // 'bancaria' | 'cajero'
       montoQ,
       nombre,
       banco,
       cuenta,
       tipoCuenta,
       telefono,
-    } = req.body as {
-      cantidadWLD?: number;
-      tipo?: 'bancaria' | 'cajero';
-      montoQ?: number;
-      nombre?: string;
-      banco?: string;
-      cuenta?: string;
-      tipoCuenta?: string;
-      telefono?: string;
-    };
+    } = req.body || {};
 
-    // Validación básica
     if (
       typeof cantidadWLD !== 'number' ||
       cantidadWLD <= 0 ||
@@ -65,37 +49,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // Verificar usuario en Supabase
+    // usuario
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('*')
       .eq('usuario_id', usuarioID)
       .single();
 
-    if (userError || !usuario) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
+    if (userError || !usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    // Verificar saldo
     if (usuario.saldo_wld < cantidadWLD) {
       return res.status(400).json({ error: 'Saldo insuficiente' });
     }
 
-    // Actualizar saldo
+    // actualizar saldo
     const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
     const { error: updateError } = await supabase
       .from('usuarios')
       .update({ saldo_wld: nuevoSaldo })
       .eq('usuario_id', usuarioID);
+    if (updateError) return res.status(500).json({ error: 'Error actualizando el saldo' });
 
-    if (updateError) {
-      return res.status(500).json({ error: 'Error actualizando el saldo' });
-    }
-
-    // Generar token único
+    // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Insertar transacción con todos los datos
+    // registrar transacción
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -109,13 +87,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono: tipo === 'cajero' ? telefono || null : null,
       created_at: new Date(),
     });
-
-    if (insertError) {
-      return res.status(500).json({ error: 'Error registrando transacción' });
-    }
+    if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
 
     return res.status(200).json({ ok: true, token, nuevoSaldo });
-  } catch (e) {
+  } catch {
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

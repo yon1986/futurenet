@@ -43,7 +43,6 @@ function RetiroCuenta() {
   const comision = totalSinComision * 0.15;
   const total = totalSinComision - comision;
 
-  // Ya NO bloqueamos por saldo local aquí
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -65,6 +64,27 @@ function RetiroCuenta() {
     setMostrarResumen(true);
   };
 
+  async function esperarConfirmacion(payload: any): Promise<void> {
+    const maxAttempts = 60; // ~3 min
+    const stepMs = 3000;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const c = await fetch("/api/pay/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ payload }),
+      });
+      const confirm = await c.json();
+
+      if (c.ok && confirm?.status === "confirmed") return;
+      if (!c.ok && confirm?.error === "onchain_failed") throw new Error("La transacción en la red falló.");
+
+      await new Promise((r) => setTimeout(r, stepMs));
+    }
+    throw new Error("La red está lenta. Intenta revisar tu historial en unos minutos.");
+  }
+
   const confirmarRetiro = async () => {
     if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
       alert("El número de teléfono debe tener exactamente 8 dígitos.");
@@ -79,11 +99,14 @@ function RetiroCuenta() {
     setConfirmando(true);
 
     try {
-      // 1) Cobrar primero la misma cantidad de WLD
-      await cobrarWLD(Number(cantidadWLD));
+      // 1) Cobrar WLD
+      const res = await cobrarWLD(Number(cantidadWLD));
+      if (res.status === "processing") {
+        await esperarConfirmacion(res.payload);
+      }
 
       // 2) Luego ejecutar el retiro
-      const res = await fetch("/api/transferir", {
+      const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -99,13 +122,13 @@ function RetiroCuenta() {
         }),
       });
 
-      if (res.status === 401) {
+      if (rx.status === 401) {
         alert("Tu sesión expiró. Inicia nuevamente con World ID.");
         navigate("/login-worldid");
         return;
       }
 
-      const data = await res.json();
+      const data = await rx.json();
 
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
@@ -127,8 +150,6 @@ function RetiroCuenta() {
           },
         ]);
         setMostrarResumen(false);
-
-        // 👉 Redirige directamente al historial
         navigate("/historial", { replace: true });
       } else {
         alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
@@ -217,7 +238,7 @@ function RetiroCuenta() {
           </p>
           <button
             onClick={() => navigate("/historial")}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="px-4 py-2 bg紫purple-600 text-white rounded-lg hover:bg-purple-700"
           >
             Ver Historial
           </button>

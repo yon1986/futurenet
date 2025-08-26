@@ -36,7 +36,6 @@ function RetiroCajero() {
     );
   }
 
-  // Ya NO bloqueamos por saldo local aquí
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -48,15 +47,36 @@ function RetiroCajero() {
     const diferencia = totalSinComision - totalARecibir;
 
     if (totalARecibir < 50) {
-      alert(
-        "❌ El monto a recibir es menor al mínimo permitido de Q50.\n\nRecarga más WLD o utiliza la opción de retiro en cuenta bancaria."
-      );
+      alert("❌ El monto a recibir es menor al mínimo permitido de Q50.\n\nRecarga más WLD o utiliza la opción de retiro en cuenta bancaria.");
       return;
     }
 
     setSobrante(diferencia);
     setMostrarResumen(true);
   };
+
+  // pequeño helper para esperar confirmación si quedó "processing"
+  async function esperarConfirmacion(payload: any): Promise<void> {
+    const maxAttempts = 60;  // ~60 * 3s = 180s
+    const stepMs = 3000;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const c = await fetch("/api/pay/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ payload }),
+      });
+      const confirm = await c.json();
+
+      if (c.ok && confirm?.status === "confirmed") return;
+      if (!c.ok && confirm?.error === "onchain_failed") throw new Error("La transacción en la red falló.");
+
+      // sigue processing → esperar
+      await new Promise((r) => setTimeout(r, stepMs));
+    }
+    throw new Error("La red está lenta. Intenta revisar tu historial en unos minutos.");
+  }
 
   const confirmarRetiro = async () => {
     if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
@@ -75,11 +95,15 @@ function RetiroCajero() {
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
 
     try {
-      // 1) Cobrar primero la misma cantidad de WLD
-      await cobrarWLD(Number(cantidadWLD));
+      // 1) Cobrar WLD
+      const res = await cobrarWLD(Number(cantidadWLD));
+      if (res.status === "processing") {
+        // esperar hasta que el backend confirme (polling corto en cliente)
+        await esperarConfirmacion(res.payload);
+      }
 
       // 2) Luego ejecutar el retiro
-      const res = await fetch("/api/transferir", {
+      const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -91,13 +115,13 @@ function RetiroCajero() {
         }),
       });
 
-      if (res.status === 401) {
+      if (rx.status === 401) {
         alert("Tu sesión expiró. Inicia nuevamente con World ID.");
         navigate("/login-worldid");
         return;
       }
 
-      const data = await res.json();
+      const data = await rx.json();
 
       if (data.ok) {
         setSaldoWLD(data.nuevoSaldo);
@@ -115,9 +139,7 @@ function RetiroCajero() {
           },
         ]);
         setMostrarResumen(false);
-
-        // 👉 Redirige directamente al historial
-        navigate("/historial", { replace: true });
+        navigate("/historial", { replace: true }); // 👉 directo a historial
       } else {
         alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
       }
@@ -225,10 +247,7 @@ function RetiroCajero() {
           </button>
         </div>
       ) : (
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 w-full max-w-sm"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
           <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
           <input
             type="number"

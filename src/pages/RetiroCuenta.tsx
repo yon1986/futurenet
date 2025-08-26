@@ -1,7 +1,7 @@
-// src/pages/RetiroCuenta.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
+import { cobrarWLD } from "../utils/pay";
 
 function RetiroCuenta() {
   const navigate = useNavigate();
@@ -42,15 +42,12 @@ function RetiroCuenta() {
   const comision = totalSinComision * 0.15;
   const total = totalSinComision - comision;
 
+  // ⬇️ Ya NO bloqueamos por saldo local aquí
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    if (cantidadWLD > saldoWLD) {
-      alert(`No tienes suficiente saldo. Saldo disponible: ${saldoWLD} WLD`);
-      return;
-    }
     if (!banco || !tipoCuenta) {
       alert("Debes seleccionar el banco y el tipo de cuenta");
       return;
@@ -72,23 +69,22 @@ function RetiroCuenta() {
       alert("El número de teléfono debe tener exactamente 8 dígitos.");
       return;
     }
-
     if (telefono !== confirmarTelefono) {
       alert("Los números de teléfono no coinciden.");
       return;
     }
-
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
     try {
+      // 1) Cobrar primero la misma cantidad de WLD
+      await cobrarWLD(Number(cantidadWLD));
+
+      // 2) Luego ejecutar el retiro
       const res = await fetch("/api/transferir", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "same-origin", // asegura que se envíe la cookie de sesión
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
-          // 👇 ya NO enviamos usuarioID, el backend lo toma del cookie
           cantidadWLD,
           tipo: "bancaria",
           montoQ: total,
@@ -131,8 +127,8 @@ function RetiroCuenta() {
       } else {
         alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
       }
-    } catch (error) {
-      alert("Error al conectar con el servidor");
+    } catch (e: any) {
+      alert(e?.message || "Error al procesar el pago.");
     }
   };
 
@@ -161,7 +157,6 @@ function RetiroCuenta() {
             Total a recibir: Q{total.toFixed(2)}
           </p>
 
-          {/* ✅ Campos de confirmación de teléfono */}
           <input
             type="tel"
             inputMode="numeric"

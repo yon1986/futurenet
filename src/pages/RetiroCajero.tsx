@@ -1,9 +1,9 @@
-// src/pages/RetiroCuenta.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
+import { cobrarWLD } from "../utils/pay";
 
-function RetiroCuenta() {
+function RetiroCajero() {
   const navigate = useNavigate();
   const {
     usuarioID,
@@ -14,19 +14,17 @@ function RetiroCuenta() {
     setTransacciones,
   } = useUser();
 
-  const [nombre, setNombre] = useState("");
-  const [banco, setBanco] = useState("");
-  const [cuenta, setCuenta] = useState("");
-  const [confirmarCuenta, setConfirmarCuenta] = useState("");
-  const [tipoCuenta, setTipoCuenta] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
+  const [telefono, setTelefono] = useState("");
+  const [confirmarTelefono, setConfirmarTelefono] = useState("");
+  const [sobrante, setSobrante] = useState<number>(0);
 
   useEffect(() => {
-    if (!usuarioID) navigate("/");
+    if (!usuarioID) {
+      navigate("/");
+    }
   }, [usuarioID, navigate]);
 
   if (!usuarioID) {
@@ -37,33 +35,25 @@ function RetiroCuenta() {
     );
   }
 
-  const totalSinComision =
-    typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
-  const comision = totalSinComision * 0.15;
-  const total = totalSinComision - comision;
-
+  // ⬇️ Ya NO bloqueamos por saldo local aquí
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
 
-    if (cantidadWLD > saldoWLD) {
-      alert(`No tienes suficiente saldo. Saldo disponible: ${saldoWLD} WLD`);
-      return;
-    }
-    if (!banco || !tipoCuenta) {
-      alert("Debes seleccionar el banco y el tipo de cuenta");
-      return;
-    }
-    if (cuenta !== confirmarCuenta) {
-      alert("El número de cuenta no coincide.");
-      return;
-    }
-    if (total < 1) {
-      alert("El monto a recibir es demasiado bajo. Aumenta la cantidad a cambiar.");
+    const montoQ = cantidadWLD * precioWLD;
+    const totalSinComision = montoQ * 0.85;
+    const totalARecibir = Math.floor(totalSinComision / 50) * 50;
+    const diferencia = totalSinComision - totalARecibir;
+
+    if (totalARecibir < 50) {
+      alert(
+        "❌ El monto a recibir es menor al mínimo permitido de Q50.\n\nRecarga más WLD o utiliza la opción de retiro en cuenta bancaria."
+      );
       return;
     }
 
+    setSobrante(diferencia);
     setMostrarResumen(true);
   };
 
@@ -72,30 +62,28 @@ function RetiroCuenta() {
       alert("El número de teléfono debe tener exactamente 8 dígitos.");
       return;
     }
-
     if (telefono !== confirmarTelefono) {
       alert("Los números de teléfono no coinciden.");
       return;
     }
 
-    if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
+    const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
+    const totalSinComision = montoQ * 0.85;
+    const totalARecibir = Math.floor(totalSinComision / 50) * 50;
 
     try {
+      // 1) Cobrar primero la misma cantidad de WLD
+      await cobrarWLD(Number(cantidadWLD));
+
+      // 2) Luego ejecutar el retiro
       const res = await fetch("/api/transferir", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "same-origin", // asegura que se envíe la cookie de sesión
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
-          // 👇 ya NO enviamos usuarioID, el backend lo toma del cookie
           cantidadWLD,
-          tipo: "bancaria",
-          montoQ: total,
-          nombre,
-          banco,
-          cuenta,
-          tipoCuenta,
+          tipo: "cajero",
+          montoQ: totalARecibir,
           telefono,
         }),
       });
@@ -115,15 +103,11 @@ function RetiroCuenta() {
           ...transacciones,
           {
             id: Date.now(),
-            tipo: "bancaria",
+            tipo: "cajero",
             token: data.token,
-            monto: total,
+            monto: totalARecibir,
             wldCambiados: cantidadWLD,
             estado: "pendiente",
-            nombre,
-            banco,
-            cuenta,
-            tipoCuenta,
             telefono,
           },
         ]);
@@ -131,16 +115,18 @@ function RetiroCuenta() {
       } else {
         alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
       }
-    } catch (error) {
-      alert("Error al conectar con el servidor");
+    } catch (e: any) {
+      alert(e?.message || "Error al procesar el pago.");
     }
   };
 
+  const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
+  const totalSinComision = montoQ * 0.85;
+  const totalARecibir = Math.floor(totalSinComision / 50) * 50;
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-purple-50 to-purple-100">
-      <h1 className="text-xl font-semibold mb-4 text-gray-800">
-        Retiro a Cuenta Bancaria
-      </h1>
+    <div className="flex flex-col items-center justify-center min-h-screen px-5 bg-gradient-to-b from-purple-50 to-purple-100">
+      <h1 className="text-xl font-bold mb-4 text-gray-800">Retiro en Cajero</h1>
       <p className="mb-1 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
       </p>
@@ -149,19 +135,20 @@ function RetiroCuenta() {
       </p>
 
       {mostrarResumen ? (
-        <div className="bg-white p-6 rounded-xl shadow-md text-gray-800 w-full max-w-sm text-sm text-left">
-          <h2 className="text-lg font-semibold text-center text-purple-700 mb-4">Resumen del Retiro</h2>
-          <p><strong>Banco:</strong> {banco}</p>
-          <p><strong>Tipo de cuenta:</strong> {tipoCuenta}</p>
-          <p><strong>Cuenta:</strong> {cuenta}</p>
+        <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-sm">
+          <h2 className="text-lg font-semibold text-center text-purple-700 mb-4">
+            Resumen del Retiro
+          </h2>
+          <p><strong>Saldo disponible:</strong> {saldoWLD} WLD ≈ Q{(saldoWLD * precioWLD).toFixed(2)}</p>
+          <p><strong>Precio actual del WLD:</strong> Q{precioWLD}</p>
           <p><strong>WLD a cambiar:</strong> {cantidadWLD}</p>
           <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
-          <p><strong>Comisión (15%):</strong> Q{comision.toFixed(2)}</p>
-          <p className="text-green-700 font-bold text-base">
-            Total a recibir: Q{total.toFixed(2)}
+          <p><strong>Comisión (15%):</strong> Q{(totalSinComision * 0.15).toFixed(2)}</p>
+          <p className="text-green-700 font-bold text-base">Total a recibir: Q{totalARecibir}</p>
+          <p className="text-xs mt-2 text-gray-600">
+            🔒 Solo se puede retirar en múltiplos de Q50. El restante de <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo en tu cuenta Worldcoin.
           </p>
 
-          {/* ✅ Campos de confirmación de teléfono */}
           <input
             type="tel"
             inputMode="numeric"
@@ -170,9 +157,7 @@ function RetiroCuenta() {
             value={telefono}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setTelefono(val);
-              }
+              if (/^\d*$/.test(val)) setTelefono(val);
             }}
             className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
             required
@@ -185,9 +170,7 @@ function RetiroCuenta() {
             value={confirmarTelefono}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setConfirmarTelefono(val);
-              }
+              if (/^\d*$/.test(val)) setConfirmarTelefono(val);
             }}
             className="p-3 border border-gray-300 rounded-lg w-full"
             required
@@ -207,6 +190,10 @@ function RetiroCuenta() {
               Confirmar
             </button>
           </div>
+
+          <p className="text-xs text-center text-gray-500 mt-4">
+            * Este cálculo es una simulación. El proceso se completa en máximo 15 minutos.
+          </p>
         </div>
       ) : tokenGenerado ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
@@ -229,68 +216,7 @@ function RetiroCuenta() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
-          <input
-            type="text"
-            placeholder="Nombre completo"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          />
-          <select
-            value={banco}
-            onChange={(e) => setBanco(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          >
-            <option value="">Selecciona el banco</option>
-            <option>Banco Industrial</option>
-            <option>Banrural</option>
-            <option>BAC</option>
-            <option>BAM</option>
-            <option>G&T</option>
-            <option>Bantrab</option>
-            <option>Promerica</option>
-          </select>
-          <select
-            value={tipoCuenta}
-            onChange={(e) => setTipoCuenta(e.target.value)}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          >
-            <option value="">Selecciona el tipo de cuenta</option>
-            <option>Monetaria</option>
-            <option>Ahorro</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Número de cuenta"
-            value={cuenta}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setCuenta(val);
-              }
-            }}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Confirmar número de cuenta"
-            value={confirmarCuenta}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setConfirmarCuenta(val);
-              }
-            }}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          />
-          <label className="font-semibold text-sm">
-            ¿Cuántos Worldcoin deseas cambiar?
-          </label>
+          <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
           <input
             type="number"
             step="0.01"
@@ -298,12 +224,13 @@ function RetiroCuenta() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
-            className="p-3 border border-gray-300 rounded-lg"
+            className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
+
           <button
             type="submit"
-            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700"
+            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
           >
             Continuar
           </button>
@@ -320,4 +247,4 @@ function RetiroCuenta() {
   );
 }
 
-export default RetiroCuenta;
+export default RetiroCajero;

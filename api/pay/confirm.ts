@@ -14,7 +14,7 @@ function getSessionFromCookie(req: VercelRequest) {
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 async function fetchTxOnce(txId: string, appId: string, apiKey: string) {
-  const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}&type=payment`;
+  const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}`;
   const resp = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${apiKey}` } });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
-    // si ya quedó, respondemos
+    // si ya quedó, devolvemos
     if (pay.status === "confirmed") {
       const { data: user } = await supabase.from("usuarios").select("*").eq("usuario_id", usuarioID).single();
       return res.status(200).json({
@@ -59,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
 
-    // Guardar tx_id (si aún no lo guardamos)
+    // guardar tx_id si falta
     if (!pay.tx_id) {
       await supabase.from("payments").update({ tx_id: payload.transaction_id }).eq("id", pay.id);
     }
@@ -68,15 +68,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const apiKey = process.env.DEV_PORTAL_API_KEY;
     if (!appId || !apiKey) return res.status(500).json({ error: "missing_portal_creds" });
 
-    // Consulta rápida: si ya minó, confirmamos; si no, dejamos "processing"
     const tx = await fetchTxOnce(payload.transaction_id, appId, apiKey);
 
-    if (tx?.transaction_status === "failed") {
+    if (tx?.status === "failed") {
       await supabase.from("payments").update({ status: "failed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
       return res.status(400).json({ error: "onchain_failed" });
     }
 
-    if (tx?.transaction_status !== "mined") {
+    if (tx?.status !== "mined") {
       if (pay.status !== "processing") {
         await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
       }

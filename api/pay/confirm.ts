@@ -12,6 +12,19 @@ function getSessionFromCookie(req: VercelRequest) {
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
+async function fetchTx(txId: string, appId: string, apiKey: string) {
+  const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}&type=payment`;
+  const resp = await fetch(url, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`portal_http_${resp.status}:${text}`);
+  }
+  return resp.json();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
@@ -26,6 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "invalid_payload" });
     }
 
+    // Buscar el payment por reference
     const { data: pay, error: qErr } = await supabase
       .from("payments")
       .select("*")
@@ -40,27 +54,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const apiKey = process.env.DEV_PORTAL_API_KEY;
     if (!appId || !apiKey) return res.status(500).json({ error: "missing_portal_creds" });
 
-    const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${payload.transaction_id}?app_id=${appId}`;
-    const resp = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${apiKey}` } });
-    const tx = await resp.json();
+    // 1) Polling hasta que quede "mined" (máx ~60s)
+    let tx: any = null;
+    const start = Date.now();
+    const timeoutMs = 60_000;
+    const intervalMs = 2_000;
 
-    if (tx?.reference !== pay.reference || tx?.status !== "success") {
+    while (Date.now() - start < timeoutMs) {
+      tx = await fetchTx(payload.transaction_id, appId, apiKey);
+
+      if (tx?.transaction_status === "mined") break;
+      if (tx?.transaction_status === "failed") {
+        await supabase
+          .from("payments")
+          .update({
+            status: "failed",
+            tx_hash: tx?.transaction_hash ?? null,
+          })
+          .eq("id", pay.id);
+        return res.status(400).json({ error: "onchain_failed" });
+      }
+      // pending → espera
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+
+    if (!tx || tx.transaction_status !== "mined") {
+      // No minó a tiempo
       await supabase
         .from("payments")
-        .update({ status: "failed", tx_hash: tx?.hash || tx?.transaction_hash || null })
+        .update({ status: "processing" })
         .eq("id", pay.id);
-      return res.status(400).json({ error: "verification_failed" });
+      return res.status(408).json({ error: "not_mined_yet" });
+    }
+
+    // 2) Validaciones de integridad
+    if (tx.reference !== pay.reference) {
+      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
+      return res.status(400).json({ error: "reference_mismatch" });
     }
 
     const merchant = (process.env.MERCHANT_WALLET || "").toLowerCase();
-    if (merchant && tx?.to_address && String(tx.to_address).toLowerCase() !== merchant) {
+    if (merchant && tx?.to && String(tx.to).toLowerCase() !== merchant) {
       await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
       return res.status(400).json({ error: "recipient_mismatch" });
     }
 
+    // 3) Confirmar y acreditar saldo
     await supabase
       .from("payments")
-      .update({ status: "confirmed", tx_hash: tx?.hash || tx?.transaction_hash || null })
+      .update({ status: "confirmed", tx_hash: tx?.transaction_hash ?? null })
       .eq("id", pay.id);
 
     const { data: user } = await supabase
@@ -69,20 +111,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq("usuario_id", usuarioID)
       .single();
 
+    const acreditado = Number(pay.amount_wld);
+
     if (!user) {
       await supabase
         .from("usuarios")
-        .insert({ usuario_id: usuarioID, saldo_wld: Number(pay.amount_wld) });
-      return res.status(200).json({ ok: true, credited: pay.amount_wld, saldo: pay.amount_wld, tx });
+        .insert({ usuario_id: usuarioID, saldo_wld: acreditado });
+      return res.status(200).json({ ok: true, credited: acreditado, saldo: acreditado, tx });
     } else {
-      const nuevoSaldo = Number(user.saldo_wld || 0) + Number(pay.amount_wld);
+      const nuevoSaldo = Number(user.saldo_wld || 0) + acreditado;
       await supabase
         .from("usuarios")
         .update({ saldo_wld: nuevoSaldo })
         .eq("usuario_id", usuarioID);
-      return res.status(200).json({ ok: true, credited: pay.amount_wld, saldo: nuevoSaldo, tx });
+      return res.status(200).json({ ok: true, credited: acreditado, saldo: nuevoSaldo, tx });
     }
-  } catch {
-    return res.status(500).json({ error: "server_error" });
+  } catch (e: any) {
+    return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }
 }

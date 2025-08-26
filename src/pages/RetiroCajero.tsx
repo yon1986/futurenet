@@ -23,9 +23,7 @@ function RetiroCajero() {
   const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
-    if (!usuarioID) {
-      navigate("/");
-    }
+    if (!usuarioID) navigate("/");
   }, [usuarioID, navigate]);
 
   if (!usuarioID) {
@@ -55,27 +53,46 @@ function RetiroCajero() {
     setMostrarResumen(true);
   };
 
-  // pequeño helper para esperar confirmación si quedó "processing"
+  // 🔁 Polling robusto: corta por 401 u otros errores; timeout claro
   async function esperarConfirmacion(payload: any): Promise<void> {
-    const maxAttempts = 60;  // ~60 * 3s = 180s
+    const deadline = Date.now() + 3 * 60 * 1000; // 3 minutos
     const stepMs = 3000;
 
-    for (let i = 0; i < maxAttempts; i++) {
+    while (Date.now() < deadline) {
       const c = await fetch("/api/pay/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
         body: JSON.stringify({ payload }),
       });
-      const confirm = await c.json();
 
-      if (c.ok && confirm?.status === "confirmed") return;
-      if (!c.ok && confirm?.error === "onchain_failed") throw new Error("La transacción en la red falló.");
+      if (c.status === 401) {
+        throw new Error("SESSION_EXPIRED");
+      }
 
-      // sigue processing → esperar
+      let confirm: any = {};
+      try {
+        confirm = await c.json();
+      } catch {
+        // si no vino JSON, lo tratamos como error no recuperable
+        throw new Error("No se pudo leer la confirmación del pago.");
+      }
+
+      if (!c.ok) {
+        // única excepción explícita: onchain_failed
+        if (confirm?.error === "onchain_failed") {
+          throw new Error("La transacción en la red falló.");
+        }
+        throw new Error(confirm?.error || "Error confirmando el pago.");
+      }
+
+      if (confirm?.status === "confirmed") return;
+
+      // sigue "processing"
       await new Promise((r) => setTimeout(r, stepMs));
     }
-    throw new Error("La red está lenta. Intenta revisar tu historial en unos minutos.");
+
+    throw new Error("La red está lenta. Revisa tu historial en unos minutos.");
   }
 
   const confirmarRetiro = async () => {
@@ -98,7 +115,6 @@ function RetiroCajero() {
       // 1) Cobrar WLD
       const res = await cobrarWLD(Number(cantidadWLD));
       if (res.status === "processing") {
-        // esperar hasta que el backend confirme (polling corto en cliente)
         await esperarConfirmacion(res.payload);
       }
 
@@ -121,9 +137,9 @@ function RetiroCajero() {
         return;
       }
 
-      const data = await rx.json();
+      const data = await rx.json().catch(() => ({}));
 
-      if (data.ok) {
+      if (rx.ok && data?.ok) {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
         setTransacciones([
@@ -139,12 +155,17 @@ function RetiroCajero() {
           },
         ]);
         setMostrarResumen(false);
-        navigate("/historial", { replace: true }); // 👉 directo a historial
+        navigate("/historial", { replace: true });
       } else {
-        alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
+        alert(`❌ Error: ${data?.error || "No se pudo procesar"}`);
       }
     } catch (e: any) {
-      alert(e?.message || "Error al procesar el pago.");
+      if (e?.message === "SESSION_EXPIRED") {
+        alert("Tu sesión expiró. Inicia nuevamente con World ID.");
+        navigate("/login-worldid");
+      } else {
+        alert(e?.message || "Error al procesar el pago.");
+      }
     } finally {
       setConfirmando(false);
     }
@@ -160,24 +181,18 @@ function RetiroCajero() {
       <p className="mb-1 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
       </p>
-      <p className="text-sm text-gray-600 mb-4">
-        Precio actual del WLD: <strong>Q{precioWLD}</strong>
-      </p>
+      <p className="text-sm text-gray-600 mb-4">Precio actual del WLD: <strong>Q{precioWLD}</strong></p>
 
       {mostrarResumen ? (
         <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-sm">
-          <h2 className="text-lg font-semibold text-center text-purple-700 mb-4">
-            Resumen del Retiro
-          </h2>
+          <h2 className="text-lg font-semibold text-center text-purple-700 mb-4">Resumen del Retiro</h2>
           <p><strong>Saldo disponible:</strong> {saldoWLD} WLD ≈ Q{(saldoWLD * precioWLD).toFixed(2)}</p>
           <p><strong>Precio actual del WLD:</strong> Q{precioWLD}</p>
           <p><strong>WLD a cambiar:</strong> {cantidadWLD}</p>
           <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
           <p><strong>Comisión (15%):</strong> Q{(totalSinComision * 0.15).toFixed(2)}</p>
           <p className="text-green-700 font-bold text-base">Total a recibir: Q{totalARecibir}</p>
-          <p className="text-xs mt-2 text-gray-600">
-            🔒 Solo se puede retirar en múltiplos de Q50. El restante de <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo en tu cuenta Worldcoin.
-          </p>
+          <p className="text-xs mt-2 text-gray-600">🔒 Solo se puede retirar en múltiplos de Q50. El restante de <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo en tu cuenta Worldcoin.</p>
 
           <input
             type="tel"
@@ -185,10 +200,7 @@ function RetiroCajero() {
             maxLength={8}
             placeholder="Número de teléfono"
             value={telefono}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^\d*$/.test(val)) setTelefono(val);
-            }}
+            onChange={(e) => { const v = e.target.value; if (/^\d*$/.test(v)) setTelefono(v); }}
             className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
             required
           />
@@ -198,53 +210,30 @@ function RetiroCajero() {
             maxLength={8}
             placeholder="Confirmar número de teléfono"
             value={confirmarTelefono}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (/^\d*$/.test(val)) setConfirmarTelefono(val);
-            }}
+            onChange={(e) => { const v = e.target.value; if (/^\d*$/.test(v)) setConfirmarTelefono(v); }}
             className="p-3 border border-gray-300 rounded-lg w-full"
             required
           />
 
           <div className="flex justify-between mt-5">
-            <button
-              onClick={() => setMostrarResumen(false)}
-              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-            >
-              Cancelar
-            </button>
+            <button onClick={() => setMostrarResumen(false)} className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">Cancelar</button>
             <button
               onClick={confirmarRetiro}
               disabled={confirmando}
-              className={`px-4 py-2 rounded-lg text-white transition
-                ${confirmando ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"}`}
+              className={`px-4 py-2 rounded-lg text-white transition ${confirmando ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"}`}
             >
               {confirmando ? "Procesando..." : "Confirmar"}
             </button>
           </div>
 
-          <p className="text-xs text-center text-gray-500 mt-4">
-            * Este cálculo es una simulación. El proceso se completa en máximo 15 minutos.
-          </p>
+          <p className="text-xs text-center text-gray-500 mt-4">* Este cálculo es una simulación. El proceso se completa en máximo 15 minutos.</p>
         </div>
       ) : tokenGenerado ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
-          <h2 className="text-lg font-semibold mb-4 text-green-600">
-            ✅ Retiro solicitado
-          </h2>
-          <p className="mb-4">
-            Tu token para reclamar el retiro es:{" "}
-            <strong className="text-xl">{tokenGenerado}</strong>
-          </p>
-          <p className="text-sm text-gray-600 mb-4">
-            Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.
-          </p>
-          <button
-            onClick={() => navigate("/historial")}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            Ver Historial
-          </button>
+          <h2 className="text-lg font-semibold mb-4 text-green-600">✅ Retiro solicitado</h2>
+          <p className="mb-4">Tu token para reclamar el retiro es: <strong className="text-xl">{tokenGenerado}</strong></p>
+          <p className="text-sm text-gray-600 mb-4">Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.</p>
+          <button onClick={() => navigate("/historial")} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Ver Historial</button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
@@ -259,20 +248,8 @@ function RetiroCajero() {
             className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
-
-          <button
-            type="submit"
-            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
-          >
-            Continuar
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/opciones")}
-            className="mt-2 text-purple-700 underline text-sm"
-          >
-            ← Volver
-          </button>
+          <button type="submit" className="w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition">Continuar</button>
+          <button type="button" onClick={() => navigate("/opciones")} className="mt-2 text-purple-700 underline text-sm">← Volver</button>
         </form>
       )}
     </div>

@@ -29,7 +29,7 @@ export async function cobrarWLD(amountWLD: number): Promise<
     throw new Error(init?.error || "No se pudo iniciar el pago.");
   }
 
-  // 2) Ejecutar Pay (IMPORTANTE: incluir network si lo devuelves desde initiate)
+  // 2) Ejecutar Pay
   const payload: PayCommandInput = {
     reference: init.reference,
     to: init.to,
@@ -55,13 +55,18 @@ export async function cobrarWLD(amountWLD: number): Promise<
     credentials: "same-origin",
     body: JSON.stringify({ payload: finalPayload }),
   });
-  const confirm = await c.json();
+
+  // maneja 401 aquí mismo
+  if (c.status === 401) {
+    throw new Error("SESSION_EXPIRED");
+  }
+
+  const confirm = await c.json().catch(() => ({}));
 
   if (c.ok && confirm?.status === "confirmed") {
     return { status: "confirmed", credited: Number(confirm?.credited || 0), saldo: Number(confirm?.saldo || 0), reference: confirm?.reference };
   }
   if (c.ok && confirm?.status === "processing") {
-    // devolvemos payload para que la pantalla haga el polling
     return { status: "processing", payload: finalPayload, reference: confirm?.reference };
   }
 

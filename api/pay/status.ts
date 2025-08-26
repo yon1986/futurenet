@@ -14,7 +14,7 @@ function getSessionFromCookie(req: VercelRequest) {
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 async function fetchTxOnce(txId: string, appId: string, apiKey: string) {
-  const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}`;
+  const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}&type=payment`;
   const resp = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${apiKey}` } });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
@@ -56,19 +56,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const tx = await fetchTxOnce(pay.tx_id, appId, apiKey);
 
-    if (tx?.status === "failed") {
+    const txStatus = (tx?.status || tx?.transaction_status || "").toLowerCase();
+    if (txStatus === "failed") {
       await supabase.from("payments").update({ status: "failed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
       return res.status(400).json({ error: "onchain_failed" });
     }
 
-    if (tx?.status !== "mined") {
+    if (txStatus !== "mined" && txStatus !== "confirmed") {
       if (pay.status !== "processing") {
         await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
       }
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
-    // Validaciones finales
+    // Validaciones
     if (tx.reference !== pay.reference) {
       await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
       return res.status(400).json({ error: "reference_mismatch" });

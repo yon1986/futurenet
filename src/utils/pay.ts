@@ -13,7 +13,7 @@ export async function cobrarWLD(amountWLD: number): Promise<CobroOk> {
     throw new Error("Monto inválido.");
   }
 
-  // 1) iniciar
+  // 1) iniciar en backend
   const r = await fetch("/api/pay/initiate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -25,17 +25,17 @@ export async function cobrarWLD(amountWLD: number): Promise<CobroOk> {
     throw new Error(init?.error || "No se pudo iniciar el pago.");
   }
 
-  // 2) pay
+  // 2) ejecutar pay (forzar red worldchain)
   const payload: PayCommandInput = {
     reference: init.reference,
     to: init.to,
+    network: "worldchain", // 👈 clave para que World App no se cuelgue
     tokens: [
       {
         symbol: Tokens.WLD,
         token_amount: tokenToDecimals(amountWLD, Tokens.WLD).toString(),
       },
     ],
-    // network: init.network || "worldchain",
     description: "Pago Futurenet",
   };
 
@@ -44,7 +44,7 @@ export async function cobrarWLD(amountWLD: number): Promise<CobroOk> {
     throw new Error("Pago cancelado o fallido.");
   }
 
-  // 3) primera confirmación (guarda tx_id y puede confirmar al tiro)
+  // 3) confirmación inicial
   const c = await fetch("/api/pay/confirm", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,7 +53,6 @@ export async function cobrarWLD(amountWLD: number): Promise<CobroOk> {
   });
 
   if (c.status === 401) throw new Error("SESSION_EXPIRED");
-
   const confirm = await c.json().catch(() => ({}));
 
   if (c.ok && confirm?.status === "confirmed") {
@@ -64,9 +63,7 @@ export async function cobrarWLD(amountWLD: number): Promise<CobroOk> {
       reference: confirm?.reference || init.reference,
     };
   }
-
   if (c.ok && confirm?.status === "processing") {
-    // devolvemos solo la referencia; el front seguirá con /api/pay/status
     return { status: "processing", reference: confirm?.reference || init.reference };
   }
 

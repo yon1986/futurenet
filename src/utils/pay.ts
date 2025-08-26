@@ -1,11 +1,12 @@
 // src/utils/pay.ts
 import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from "@worldcoin/minikit-js";
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 /**
- * Cobra 'amountWLD' al usuario dentro de World App usando MiniKit Pay.
- * 1) pide un reference al backend (/api/pay/initiate)
- * 2) ejecuta Pay en World App
- * 3) confirma en backend (/api/pay/confirm) y acredita saldo en 'usuarios'
+ * Cobra 'amountWLD' usando MiniKit Pay y NO resuelve hasta que el backend confirme (saldo acreditado).
  */
 export async function cobrarWLD(amountWLD: number) {
   if (!MiniKit.isInstalled()) {
@@ -15,7 +16,7 @@ export async function cobrarWLD(amountWLD: number) {
     throw new Error("Monto inválido.");
   }
 
-  // 1) reference + address destino desde backend
+  // 1) reference + address desde backend
   const r = await fetch("/api/pay/initiate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -37,7 +38,6 @@ export async function cobrarWLD(amountWLD: number) {
         token_amount: tokenToDecimals(amountWLD, Tokens.WLD).toString(),
       },
     ],
-    // network: init.network || "worldchain",
     description: "Pago Futurenet",
   };
 
@@ -46,17 +46,36 @@ export async function cobrarWLD(amountWLD: number) {
     throw new Error("Pago cancelado o fallido.");
   }
 
-  // 3) Confirmar en backend (verifica en Developer Portal y acredita saldo)
-  const c = await fetch("/api/pay/confirm", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({ payload: finalPayload }),
-  });
-  const confirm = await c.json();
-  if (!c.ok || !confirm?.ok) {
+  // 3) Confirmar en backend (verifica en Portal y acredita saldo)
+  let attempt = 0;
+  const maxAttempts = 40;          // ~40 * 3s = 120s extra
+  const stepMs = 3000;
+
+  while (true) {
+    const c = await fetch("/api/pay/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ payload: finalPayload }),
+    });
+    const confirm = await c.json();
+
+    if (c.ok && (confirm?.status === "confirmed" || (confirm?.ok === true && !confirm?.status))) {
+      // confirmado y saldo acreditado
+      return confirm; // { ok, status:"confirmed", credited, saldo, tx }
+    }
+
+    if (c.ok && confirm?.status === "processing") {
+      // todavía minando → reintenta
+      attempt++;
+      if (attempt > maxAttempts) {
+        throw new Error("La transacción sigue confirmándose en la red. Revisa tu historial en unos minutos.");
+      }
+      await sleep(stepMs);
+      continue;
+    }
+
+    // errores reales
     throw new Error(confirm?.error || "No se pudo confirmar el pago.");
   }
-
-  return confirm; // { ok:true, credited, saldo, tx }
 }

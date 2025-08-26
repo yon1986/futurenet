@@ -24,6 +24,7 @@ function RetiroCuenta() {
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
     if (!usuarioID) navigate("/");
@@ -42,7 +43,7 @@ function RetiroCuenta() {
   const comision = totalSinComision * 0.15;
   const total = totalSinComision - comision;
 
-  // ⬇️ Ya NO bloqueamos por saldo local aquí
+  // Ya NO bloqueamos por saldo local aquí
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -74,6 +75,8 @@ function RetiroCuenta() {
       return;
     }
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
+    if (confirmando) return;
+    setConfirmando(true);
 
     try {
       // 1) Cobrar primero la misma cantidad de WLD
@@ -124,19 +127,22 @@ function RetiroCuenta() {
           },
         ]);
         setMostrarResumen(false);
+
+        // 👉 Redirige directamente al historial
+        navigate("/historial", { replace: true });
       } else {
         alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
       }
     } catch (e: any) {
       alert(e?.message || "Error al procesar el pago.");
+    } finally {
+      setConfirmando(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-purple-50 to-purple-100">
-      <h1 className="text-xl font-semibold mb-4 text-gray-800">
-        Retiro a Cuenta Bancaria
-      </h1>
+      <h1 className="text-xl font-semibold mb-4 text-gray-800">Retiro a Cuenta Bancaria</h1>
       <p className="mb-1 text-gray-700">
         Saldo disponible: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
       </p>
@@ -153,9 +159,7 @@ function RetiroCuenta() {
           <p><strong>WLD a cambiar:</strong> {cantidadWLD}</p>
           <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
           <p><strong>Comisión (15%):</strong> Q{comision.toFixed(2)}</p>
-          <p className="text-green-700 font-bold text-base">
-            Total a recibir: Q{total.toFixed(2)}
-          </p>
+          <p className="text-green-700 font-bold text-base">Total a recibir: Q{total.toFixed(2)}</p>
 
           <input
             type="tel"
@@ -165,9 +169,7 @@ function RetiroCuenta() {
             value={telefono}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setTelefono(val);
-              }
+              if (/^\d*$/.test(val)) setTelefono(val);
             }}
             className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
             required
@@ -180,9 +182,7 @@ function RetiroCuenta() {
             value={confirmarTelefono}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setConfirmarTelefono(val);
-              }
+              if (/^\d*$/.test(val)) setConfirmarTelefono(val);
             }}
             className="p-3 border border-gray-300 rounded-lg w-full"
             required
@@ -197,17 +197,17 @@ function RetiroCuenta() {
             </button>
             <button
               onClick={confirmarRetiro}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              disabled={confirmando}
+              className={`px-4 py-2 rounded-lg text-white transition
+                ${confirmando ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"}`}
             >
-              Confirmar
+              {confirmando ? "Procesando..." : "Confirmar"}
             </button>
           </div>
         </div>
       ) : tokenGenerado ? (
         <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
-          <h2 className="text-lg font-semibold mb-4 text-green-600">
-            ✅ Retiro solicitado
-          </h2>
+          <h2 className="text-lg font-semibold mb-4 text-green-600">✅ Retiro solicitado</h2>
           <p className="mb-4">
             Tu token para reclamar el retiro es:{" "}
             <strong className="text-xl">{tokenGenerado}</strong>
@@ -263,9 +263,7 @@ function RetiroCuenta() {
             value={cuenta}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setCuenta(val);
-              }
+              if (/^\d*$/.test(val)) setCuenta(val);
             }}
             className="p-3 border border-gray-300 rounded-lg"
             required
@@ -276,16 +274,12 @@ function RetiroCuenta() {
             value={confirmarCuenta}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^\d*$/.test(val)) {
-                setConfirmarCuenta(val);
-              }
+              if (/^\d*$/.test(val)) setConfirmarCuenta(val);
             }}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />
-          <label className="font-semibold text-sm">
-            ¿Cuántos Worldcoin deseas cambiar?
-          </label>
+          <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
           <input
             type="number"
             step="0.01"

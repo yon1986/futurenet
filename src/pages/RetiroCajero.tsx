@@ -20,6 +20,7 @@ function RetiroCajero() {
   const [telefono, setTelefono] = useState("");
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [sobrante, setSobrante] = useState<number>(0);
+  const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
     if (!usuarioID) {
@@ -35,7 +36,7 @@ function RetiroCajero() {
     );
   }
 
-  // ⬇️ Ya NO bloqueamos por saldo local aquí
+  // Ya NO bloqueamos por saldo local aquí
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -66,6 +67,8 @@ function RetiroCajero() {
       alert("Los números de teléfono no coinciden.");
       return;
     }
+    if (confirmando) return;
+    setConfirmando(true);
 
     const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
     const totalSinComision = montoQ * 0.85;
@@ -112,11 +115,16 @@ function RetiroCajero() {
           },
         ]);
         setMostrarResumen(false);
+
+        // 👉 Redirige directamente al historial
+        navigate("/historial", { replace: true });
       } else {
         alert(`❌ Error: ${data.error || "No se pudo procesar"}`);
       }
     } catch (e: any) {
       alert(e?.message || "Error al procesar el pago.");
+    } finally {
+      setConfirmando(false);
     }
   };
 
@@ -185,9 +193,11 @@ function RetiroCajero() {
             </button>
             <button
               onClick={confirmarRetiro}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              disabled={confirmando}
+              className={`px-4 py-2 rounded-lg text-white transition
+                ${confirmando ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"}`}
             >
-              Confirmar
+              {confirmando ? "Procesando..." : "Confirmar"}
             </button>
           </div>
 
@@ -215,7 +225,10 @@ function RetiroCajero() {
           </button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 w-full max-w-sm"
+        >
           <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
           <input
             type="number"

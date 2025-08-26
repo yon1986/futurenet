@@ -1,16 +1,59 @@
+// src/pages/Opciones.tsx
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD, precioWLD } = useUser(); // 👈 incluimos precioWLD
+  const { usuarioID, saldoWLD, precioWLD } = useUser();
+
+  // --- Diagnóstico temporal ---
+  const [testing, setTesting] = useState(false);
+  const [out, setOut] = useState<string>("");
 
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
     }
   }, [usuarioID, navigate]);
+
+  const probarApis = async () => {
+    setTesting(true);
+    setOut("Probando…");
+    try {
+      // 1) whoami: comprueba si hay cookie de sesión válida
+      const w = await fetch("/api/worldid/whoami", {
+        method: "GET",
+        credentials: "same-origin",
+      });
+      const who = await w.json().catch(() => ({}));
+
+      // 2) saldo: debe responder 200 si hay sesión; 401 si no
+      const s = await fetch("/api/saldo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({}), // ya no se envía usuarioID
+      });
+      const saldoJson = await s.json().catch(() => ({}));
+
+      setOut(
+        JSON.stringify(
+          {
+            whoami: who,           // { ok:true, authenticated:true, session:{...} } si hay cookie
+            saldo_status: s.status, // 200 si ok; 401 si no hay sesión
+            saldo: saldoJson,      // { saldo: number } si 200
+          },
+          null,
+          2
+        )
+      );
+    } catch (e: any) {
+      setOut("Error: " + (e?.message || "desconocido"));
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-gradient-to-b from-purple-50 to-purple-200">
@@ -50,7 +93,7 @@ function Opciones() {
           </button>
         </div>
 
-        {/* 🔻 Botones secundarios: Términos y ¿Cómo funciona? */}
+        {/* --- Diagnóstico (temporal) --- */}
         <div className="mt-8 space-y-2">
           <button
             onClick={() => navigate("/como-funciona")}
@@ -65,7 +108,26 @@ function Opciones() {
           >
             Términos y condiciones
           </button>
+
+          <div className="mt-6 p-4 border rounded-lg text-left">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-sm">Diagnóstico (temporal)</p>
+              <button
+                onClick={probarApis}
+                disabled={testing}
+                className="px-3 py-2 text-xs rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              >
+                {testing ? "Probando..." : "Probar API segura"}
+              </button>
+            </div>
+            {out && (
+              <pre className="mt-3 text-xs overflow-auto max-h-48 whitespace-pre-wrap">
+                {out}
+              </pre>
+            )}
+          </div>
         </div>
+        {/* --- Fin diagnóstico --- */}
       </div>
     </div>
   );

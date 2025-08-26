@@ -23,6 +23,23 @@ async function fetchTxOnce(txId: string, appId: string, apiKey: string) {
   return resp.json();
 }
 
+function findTxIdDeep(obj: any): string | undefined {
+  if (!obj || typeof obj !== "object") return;
+  for (const [k, v] of Object.entries(obj)) {
+    const key = k.toLowerCase();
+    if (typeof v === "string") {
+      if (key === "transaction_id" || key === "tx_id" || key === "transactionid" || key === "txid") {
+        return v;
+      }
+    }
+    if (v && typeof v === "object") {
+      const r = findTxIdDeep(v);
+      if (r) return r;
+    }
+  }
+  return;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
@@ -44,9 +61,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
 
-    const txId = pay.tx_id;
+    let txId: string | undefined = pay.tx_id;
+    if (!txId && pay.raw_payload) {
+      txId = findTxIdDeep(pay.raw_payload);
+      if (txId) await supabase.from("payments").update({ tx_id: txId }).eq("id", pay.id);
+    }
     if (!txId) {
-      // Aún no tenemos tx_id (confirm se encargará en la próxima vuelta).
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 

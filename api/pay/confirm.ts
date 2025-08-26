@@ -23,16 +23,22 @@ async function fetchTxOnce(txId: string, appId: string, apiKey: string) {
   return resp.json();
 }
 
-function extractTxId(payload: any): string | undefined {
-  return (
-    payload?.transaction_id ||
-    payload?.transactionId ||
-    payload?.response?.transaction_id ||
-    payload?.response?.transactionId ||
-    payload?.transaction?.id ||
-    payload?.tx_id ||
-    payload?.txId
-  );
+// Busca transaction_id/tx_id en cualquier nivel del objeto
+function findTxIdDeep(obj: any): string | undefined {
+  if (!obj || typeof obj !== "object") return;
+  for (const [k, v] of Object.entries(obj)) {
+    const key = k.toLowerCase();
+    if (typeof v === "string") {
+      if (key === "transaction_id" || key === "tx_id" || key === "transactionid" || key === "txid") {
+        return v;
+      }
+    }
+    if (v && typeof v === "object") {
+      const r = findTxIdDeep(v);
+      if (r) return r;
+    }
+  }
+  return;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -45,14 +51,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { payload } = (req.body || {}) as { payload?: any };
-    const reference = payload?.reference;
+    const reference: string | undefined = payload?.reference;
     if (!reference) return res.status(400).json({ error: "missing_reference" });
 
-    const { data: pay, error: qErr } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("reference", reference)
-      .single();
+    const { data: pay, error: qErr } = await supabase.from("payments").select("*").eq("reference", reference).single();
     if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
@@ -62,20 +64,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
 
-    // 1) Guardar tx_id (robusto) y poner processing desde ya
-    const txId = extractTxId(payload);
+    // Guarda SIEMPRE el payload en la fila para debug
+    await supabase.from("payments").update({ raw_payload: payload }).eq("id", pay.id);
+
+    // Extrae txId en cualquier formato y guárdalo
+    const txId = findTxIdDeep(payload);
     if (txId && pay.tx_id !== txId) {
       await supabase.from("payments").update({ tx_id: txId }).eq("id", pay.id);
     }
+
+    // Pasa a processing ya mismo
     if (pay.status !== "processing") {
       await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
     }
 
-    // 2) Intentar confirmar si ya minó
+    // Si no hay credenciales o no hay txId aún → deja que el front haga polling
     const appId = process.env.APP_ID;
     const apiKey = process.env.DEV_PORTAL_API_KEY;
     if (!appId || !apiKey || !txId) {
-      // sin credenciales o sin txId todavía → que el front haga polling
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
@@ -86,11 +92,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabase.from("payments").update({ status: "failed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
       return res.status(400).json({ error: "onchain_failed" });
     }
-
     if (txStatus !== "mined" && txStatus !== "confirmed") {
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
+    // Validaciones finales
     if (tx.reference !== reference) {
       await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
       return res.status(400).json({ error: "reference_mismatch" });
@@ -101,6 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "recipient_mismatch" });
     }
 
+    // Confirmar y acreditar
     await supabase.from("payments").update({ status: "confirmed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
 
     const { data: user } = await supabase.from("usuarios").select("*").eq("usuario_id", usuarioID).single();

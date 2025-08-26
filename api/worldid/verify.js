@@ -1,13 +1,13 @@
 // api/worldid/verify.js
+const { signSession } = require('../_lib/session');
+
 module.exports = async (req, res) => {
-  // Para GET/otros métodos, solo confirmamos que la ruta existe
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'method-not-allowed' });
     return;
   }
 
-  // A partir de aquí será para la verificación real (en el siguiente paso)
-  const APP_ID = process.env.WORLD_APP_ID; // ej: app_16e531ba60f3f22005fa73b1bd8fb93f
+  const APP_ID = process.env.WORLD_APP_ID;
   if (!APP_ID) {
     res.status(500).json({ ok: false, error: 'missing-app-id' });
     return;
@@ -41,6 +41,19 @@ module.exports = async (req, res) => {
       res.status(400).json({ ok: false, error: 'invalid-proof', details: data });
       return;
     }
+
+    // ✅ Firmar cookie de sesión (30 días)
+    const token = signSession({
+      sub: nullifier_hash,
+      lvl: verification_level,
+      act: action,
+      iat: Math.floor(Date.now() / 1000),
+    });
+
+    res.setHeader(
+      'Set-Cookie',
+      `fn_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`
+    );
 
     res.status(200).json({ ok: true, nullifier_hash, action });
   } catch (e) {

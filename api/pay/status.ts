@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Falta referencia" });
     }
 
-    // 1. Buscar pago en la base de datos
+    // 1. Buscar pago en Supabase
     const { data: payment, error: fetchError } = await supabase
       .from("payments")
       .select("*")
@@ -26,12 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (fetchError || !payment) {
-      return res.status(404).json({ error: "Pago no encontrado" });
+      return res.status(404).json({ error: "Pago no encontrado en Supabase" });
     }
 
     // 2. Consultar Developer Portal
     const resp = await fetch(
-      `https://developer.worldcoin.org/api/v1/apps/${process.env.APP_ID}/payments/${reference}`,
+      `https://developer.worldcoin.org/api/v1/payments/${reference}`,
       {
         method: "GET",
         headers: {
@@ -43,25 +43,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!resp.ok) {
       const txt = await resp.text();
-      return res
-        .status(500)
-        .json({ error: "Error consultando Portal", details: txt });
+      return res.status(500).json({ error: "Error consultando Portal", details: txt });
     }
 
     const portalData = await resp.json();
-    // Esperamos que devuelva algo como { status: "mined", transactionHash: "0x..." }
+
+    // Ejemplo esperado de portalData:
+    // { reference: "pay_...", status: "mined", transactionHash: "0x..." }
 
     const portalStatus = portalData.status || "unknown";
     const txHash = portalData.transactionHash || null;
 
-    // 3. Actualizar Supabase si está mined/confirmed
+    // 3. Si el pago está minado, actualizar Supabase
     if (portalStatus === "mined") {
       await supabase
         .from("payments")
         .update({
           status: "confirmed",
           tx_hash: txHash,
-          tx_id: txHash, // opcionalmente sobreescribimos con el correcto
+          tx_id: txHash, // sobreescribimos con el correcto
         })
         .eq("reference", reference);
 
@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Si sigue submitted/processing
+    // 4. Si sigue en submitted o processing
     return res.status(200).json({
       ok: true,
       status: portalStatus,
@@ -80,6 +80,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     console.error("🔥 Error en /pay/status:", err);
-    return res.status(500).json({ error: "Error en el servidor", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Error en el servidor", details: err.message });
   }
 }

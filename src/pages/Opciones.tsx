@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 
-// Tipo de cambio que usa World App
-const TIPO_CAMBIO_GTQ = 7.65;
+// Tipo de cambio que usa World App (calculado con tus datos)
+const TIPO_CAMBIO_GTQ = 7.68;
 
 function Opciones() {
   const navigate = useNavigate();
@@ -17,17 +17,17 @@ function Opciones() {
     if (!usuarioID) navigate("/");
   }, [usuarioID, navigate]);
 
-  // Obtener precio WLD en USD y convertir a GTQ
+  // Obtener precio WLD en USD desde Binance y convertir a GTQ
   useEffect(() => {
     async function fetchPrecio() {
       try {
         const res = await fetch(
-          "https://api.coingecko.com/api/v3/simple/price?ids=worldcoin&vs_currencies=usd"
+          "https://api.binance.com/api/v3/ticker/price?symbol=WLDUSDT"
         );
         const data = await res.json();
-        const precioUSD = data.worldcoin.usd;
+        const precioUSD = parseFloat(data.price);
 
-        // Conversión a Quetzales usando el tipo de cambio oficial
+        // Conversión a Quetzales usando tipo de cambio de World App
         const precioGTQ = precioUSD * TIPO_CAMBIO_GTQ;
 
         setPrecioWLD(precioGTQ);

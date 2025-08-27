@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 
+// Tipo de cambio que usa World App
+const TIPO_CAMBIO_GTQ = 7.65;
+
 function Opciones() {
   const navigate = useNavigate();
   const { usuarioID, saldoWLD } = useUser();
@@ -14,15 +17,18 @@ function Opciones() {
     if (!usuarioID) navigate("/");
   }, [usuarioID, navigate]);
 
-  // Obtener precio WLD en GTQ desde CoinGecko
+  // Obtener precio WLD en USD y convertir a GTQ
   useEffect(() => {
     async function fetchPrecio() {
       try {
         const res = await fetch(
-          "https://api.coingecko.com/api/v3/simple/price?ids=worldcoin&vs_currencies=gtq"
+          "https://api.coingecko.com/api/v3/simple/price?ids=worldcoin&vs_currencies=usd"
         );
         const data = await res.json();
-        const precioGTQ = data.worldcoin.gtq;
+        const precioUSD = data.worldcoin.usd;
+
+        // Conversión a Quetzales usando el tipo de cambio oficial
+        const precioGTQ = precioUSD * TIPO_CAMBIO_GTQ;
 
         setPrecioWLD(precioGTQ);
       } catch (err) {
@@ -45,13 +51,10 @@ function Opciones() {
           Saldo actual: <strong>{saldoWLD.toFixed(4)} WLD</strong>
         </p>
 
-        {/* Precio siempre correcto */}
+        {/* Precio en quetzales */}
         <p className="text-sm text-gray-600 mb-4">
           Precio actual del WLD:{" "}
-          <strong>
-            {precioWLD ? `Q${precioWLD.toFixed(2)}` : "Cargando..."}
-          </strong>{" "}
-          por 1 WLD
+          <strong>{precioWLD ? `Q${precioWLD.toFixed(2)}` : "Cargando..."}</strong>
         </p>
 
         <div className="flex flex-col gap-4">

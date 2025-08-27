@@ -40,14 +40,18 @@ function Opciones() {
           ¿Cómo deseas cambiar tus Worldcoin?
         </h1>
 
+        {/* Saldo simulado */}
         <p className="mb-1 text-gray-700">
-          Saldo actual:{" "}
-          <strong>{saldoWLD.toFixed(4)} WLD</strong>{" "}
-          ≈ Q{precioWLD ? (saldoWLD * precioWLD).toFixed(2) : "Cargando..."}
+          Saldo actual: <strong>{saldoWLD.toFixed(4)} WLD</strong>
         </p>
+
+        {/* Precio siempre correcto */}
         <p className="text-sm text-gray-600 mb-4">
           Precio actual del WLD:{" "}
-          <strong>Q{precioWLD ? precioWLD.toFixed(2) : "Cargando..."}</strong>
+          <strong>
+            {precioWLD ? `Q${precioWLD.toFixed(2)}` : "Cargando..."}
+          </strong>{" "}
+          por 1 WLD
         </p>
 
         <div className="flex flex-col gap-4">

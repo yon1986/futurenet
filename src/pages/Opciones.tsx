@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 
-// Tipo de cambio que usa World App (calculado con tus datos)
-const TIPO_CAMBIO_GTQ = 7.68;
+// Tipo de cambio ajustado para que el precio quede 1 centavo arriba
+const TIPO_CAMBIO_GTQ = 7.69;
 
 function Opciones() {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ function Opciones() {
         const data = await res.json();
         const precioUSD = parseFloat(data.price);
 
-        // Conversión a Quetzales usando tipo de cambio de World App
+        // Conversión a Quetzales usando tipo de cambio ajustado
         const precioGTQ = precioUSD * TIPO_CAMBIO_GTQ;
 
         setPrecioWLD(precioGTQ);

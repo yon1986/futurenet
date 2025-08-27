@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface Transaccion {
   id: number;
@@ -7,7 +7,6 @@ interface Transaccion {
   monto: number;
   wldCambiados: number;
   estado: string;
-  // Campos extra opcionales
   telefono?: string;
   nombre?: string;
   banco?: string;
@@ -30,8 +29,27 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [usuarioID, setUsuarioIDState] = useState<string | null>(null);
   const [saldoWLD, setSaldoWLDState] = useState<number>(0);
-  const [precioWLD] = useState<number>(8); // Precio fijo de ejemplo
+  const [precioWLD, setPrecioWLD] = useState<number>(8); // inicial en 8
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
+
+  // 🚀 Obtener precio dinámico desde Binance y convertir a quetzales
+  useEffect(() => {
+    async function fetchPrecio() {
+      try {
+        const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=WLDUSDT");
+        const data = await res.json();
+        const precioUSD = parseFloat(data.price);
+        const precioGTQ = precioUSD * 7.69; // ajuste para que coincida con World App
+        setPrecioWLD(precioGTQ);
+      } catch (err) {
+        console.error("Error obteniendo precio WLD:", err);
+      }
+    }
+
+    fetchPrecio(); // primera carga
+    const interval = setInterval(fetchPrecio, 60000); // refrescar cada 60s
+    return () => clearInterval(interval);
+  }, []);
 
   const setUsuarioID = (id: string | null) => {
     setUsuarioIDState(id);

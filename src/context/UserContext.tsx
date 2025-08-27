@@ -29,25 +29,25 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [usuarioID, setUsuarioIDState] = useState<string | null>(null);
   const [saldoWLD, setSaldoWLDState] = useState<number>(0);
-  const [precioWLD, setPrecioWLD] = useState<number>(8); // inicial en 8
+  const [precioWLD, setPrecioWLD] = useState<number>(8);
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
 
-  // 🚀 Obtener precio dinámico desde Binance y convertir a quetzales
+  // 🚀 Precio dinámico desde Binance (USD → GTQ con ajuste y -0.03)
   useEffect(() => {
     async function fetchPrecio() {
       try {
         const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=WLDUSDT");
         const data = await res.json();
         const precioUSD = parseFloat(data.price);
-        const precioGTQ = precioUSD * 7.69; // ajuste para que coincida con World App
+        const precioGTQ = precioUSD * 7.69 - 0.03; // 👈 descuento de Q0.03
         setPrecioWLD(precioGTQ);
       } catch (err) {
         console.error("Error obteniendo precio WLD:", err);
       }
     }
 
-    fetchPrecio(); // primera carga
-    const interval = setInterval(fetchPrecio, 60000); // refrescar cada 60s
+    fetchPrecio();
+    const interval = setInterval(fetchPrecio, 60000);
     return () => clearInterval(interval);
   }, []);
 

@@ -1,43 +1,14 @@
-// src/pages/Opciones.tsx
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useUser } from "../context/UserContext";
-
-// Tipo de cambio ajustado para que el precio quede 1 centavo arriba
-const TIPO_CAMBIO_GTQ = 7.69;
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD } = useUser();
+  const { usuarioID, saldoWLD, precioWLD } = useUser();
 
-  const [precioWLD, setPrecioWLD] = useState<number>(0);
-
-  // Redirigir si no hay sesión
   useEffect(() => {
     if (!usuarioID) navigate("/");
   }, [usuarioID, navigate]);
-
-  // Obtener precio WLD en USD desde Binance y convertir a GTQ
-  useEffect(() => {
-    async function fetchPrecio() {
-      try {
-        const res = await fetch(
-          "https://api.binance.com/api/v3/ticker/price?symbol=WLDUSDT"
-        );
-        const data = await res.json();
-        const precioUSD = parseFloat(data.price);
-
-        // Conversión a Quetzales usando tipo de cambio ajustado
-        const precioGTQ = precioUSD * TIPO_CAMBIO_GTQ;
-
-        setPrecioWLD(precioGTQ);
-      } catch (err) {
-        console.error("Error obteniendo precio WLD:", err);
-      }
-    }
-
-    fetchPrecio();
-  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-gradient-to-b from-purple-50 to-purple-200">
@@ -46,15 +17,11 @@ function Opciones() {
           ¿Cómo deseas cambiar tus Worldcoin?
         </h1>
 
-        {/* Saldo simulado */}
         <p className="mb-1 text-gray-700">
-          Saldo actual: <strong>{saldoWLD.toFixed(4)} WLD</strong>
+          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
         </p>
-
-        {/* Precio en quetzales */}
         <p className="text-sm text-gray-600 mb-4">
-          Precio actual del WLD:{" "}
-          <strong>{precioWLD ? `Q${precioWLD.toFixed(2)}` : "Cargando..."}</strong>
+          Precio actual del WLD: <strong>Q{precioWLD.toFixed(2)}</strong>
         </p>
 
         <div className="flex flex-col gap-4">

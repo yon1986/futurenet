@@ -16,6 +16,7 @@ function RetiroCajero() {
   const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => { if (!usuarioID) navigate("/"); }, [usuarioID, navigate]);
+
   if (!usuarioID) return <div className="flex items-center justify-center min-h-screen"><p>Cargando...</p></div>;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,7 +27,6 @@ function RetiroCajero() {
     const totalSinComision = montoQ * 0.85;
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
     const diferencia = totalSinComision - totalARecibir;
-
     if (totalARecibir < 50) {
       alert("❌ El monto a recibir es menor al mínimo permitido de Q50.\n\nRecarga más WLD o utiliza la opción de retiro en cuenta bancaria.");
       return;
@@ -36,7 +36,7 @@ function RetiroCajero() {
   };
 
   async function esperarConfirmacion(reference: string): Promise<void> {
-    const deadline = Date.now() + 3 * 60 * 1000;
+    const deadline = Date.now() + 3 * 60 * 1000; // 3 min
     const stepMs = 3000;
 
     while (Date.now() < deadline) {
@@ -48,6 +48,7 @@ function RetiroCajero() {
       });
 
       if (c.status === 401) throw new Error("SESSION_EXPIRED");
+
       let confirm: any = {};
       try { confirm = await c.json(); } catch { throw new Error("No se pudo leer la confirmación del pago."); }
 
@@ -55,7 +56,9 @@ function RetiroCajero() {
         if (confirm?.error === "onchain_failed") throw new Error("La transacción en la red falló.");
         throw new Error(confirm?.error || "Error confirmando el pago.");
       }
+
       if (confirm?.status === "confirmed") return;
+
       await new Promise((r) => setTimeout(r, stepMs));
     }
     throw new Error("La red está lenta. Revisa tu historial en unos minutos.");
@@ -72,11 +75,13 @@ function RetiroCajero() {
     const totalARecibir = Math.floor(totalSinComision / 50) * 50;
 
     try {
+      // 1) Cobrar
       const res = await cobrarWLD(Number(cantidadWLD));
       if (res.status === "processing") {
         await esperarConfirmacion(res.reference);
       }
 
+      // 2) Retiro
       const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,8 +90,8 @@ function RetiroCajero() {
       });
 
       if (rx.status === 401) { alert("Tu sesión expiró. Inicia nuevamente con World ID."); navigate("/login-worldid"); return; }
-      const data = await rx.json().catch(() => ({}));
 
+      const data = await rx.json().catch(() => ({}));
       if (rx.ok && data?.ok) {
         setSaldoWLD(data.nuevoSaldo);
         setTokenGenerado(data.token);
@@ -124,7 +129,7 @@ function RetiroCajero() {
           <p><strong>Total sin comisión:</strong> Q{totalSinComision.toFixed(2)}</p>
           <p><strong>Comisión (15%):</strong> Q{(totalSinComision * 0.15).toFixed(2)}</p>
           <p className="text-green-700 font-bold text-base">Total a recibir: Q{totalARecibir}</p>
-          <p className="text-xs mt-2 text-gray-600">🔒 Solo se puede retirar en múltiplos de Q50. El sobrante de <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo.</p>
+          <p className="text-xs mt-2 text-gray-600">🔒 Solo se puede retirar en múltiplos de Q50. El restante de <strong>Q{sobrante.toFixed(2)}</strong> quedará como saldo en tu cuenta Worldcoin.</p>
 
           <input type="tel" inputMode="numeric" maxLength={8} placeholder="Número de teléfono"
             value={telefono} onChange={(e) => { const v = e.target.value; if (/^\d*$/.test(v)) setTelefono(v); }}

@@ -1,8 +1,7 @@
-// api/transferir.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-/* auth por cookie */
+// auth por cookie
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
 function getSessionFromCookie(req: VercelRequest) {
@@ -12,7 +11,7 @@ function getSessionFromCookie(req: VercelRequest) {
   return verifySession(token);
 }
 
-/* supabase */
+// supabase
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -49,31 +48,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // usuario
-    const { data: usuario, error: userError } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('usuario_id', usuarioID)
-      .single();
-
-    if (userError || !usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-    if (usuario.saldo_wld < cantidadWLD) {
-      return res.status(400).json({ error: 'Saldo insuficiente' });
-    }
-
-    // actualizar saldo
-    const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
-    const { error: updateError } = await supabase
-      .from('usuarios')
-      .update({ saldo_wld: nuevoSaldo })
-      .eq('usuario_id', usuarioID);
-    if (updateError) return res.status(500).json({ error: 'Error actualizando el saldo' });
+    // ⚠️ Ya NO validamos ni descontamos saldo en Supabase.
+    // El saldo real ya fue debitado on-chain en cobrarWLD.
 
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción
+    // registrar transacción en Supabase (solo historial, no saldo)
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -89,8 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
 
-    return res.status(200).json({ ok: true, token, nuevoSaldo });
-  } catch {
+    return res.status(200).json({ ok: true, token });
+  } catch (e) {
+    console.error("transferir error:", e);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

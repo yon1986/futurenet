@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getSaldoReal } from "../utils/blockchain"; // 👈 usamos la utilidad nueva
 
 interface Transaccion {
   id: number;
@@ -35,7 +36,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [precioWLD, setPrecioWLD] = useState<number>(8);
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
 
-  // ✅ Precio dinámico desde Binance (USD → GTQ con ajuste de -0.03)
+  // ✅ Precio dinámico desde Binance (USD → GTQ con ajuste -0.03)
   useEffect(() => {
     async function fetchPrecio() {
       try {
@@ -50,10 +51,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     fetchPrecio();
-    const interval = setInterval(fetchPrecio, 60000); // cada 1 min
+    const interval = setInterval(fetchPrecio, 60000); // cada 1 minuto
     return () => clearInterval(interval);
   }, []);
 
+  // ✅ Obtener saldo real en blockchain cuando tenemos walletAddress
+  useEffect(() => {
+    async function cargarSaldo() {
+      if (walletAddress) {
+        const saldo = await getSaldoReal(walletAddress);
+        setSaldoWLD(saldo);
+      }
+    }
+    cargarSaldo();
+  }, [walletAddress]);
+
+  // ====================
+  // Helpers para contexto
+  // ====================
   const setUsuarioID = (id: string | null) => {
     setUsuarioIDState(id);
     if (id) {

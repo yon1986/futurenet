@@ -9,15 +9,12 @@ import { useUser } from "../context/UserContext";
 import QRCode from "react-qr-code";
 
 const LoginWorldID: React.FC = () => {
-  const { setUsuarioID, setWalletAddress, setSaldoWLD } = useUser();
+  const { setUsuarioID, setWalletAddress } = useUser();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
 
-  // 👇 Deep link (para intentar abrir World App)
-  const deepLink = "worldcoin://id?action=futurenet-login";
-
-  // 👇 Fallback: URL de tu app en Vercel
+  // 👇 URL de tu miniapp (para QR en escritorio)
   const appUrl = "https://futurenet.vercel.app/login-worldid";
 
   const ejecutarVerificacion = async () => {
@@ -26,16 +23,11 @@ const LoginWorldID: React.FC = () => {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {
-          // 📱 En móvil → intentar abrir con deep link
-          window.location.href = deepLink;
-
-          // ⏳ Si después de 1.5s no abrió nada → fallback a QR
-          setTimeout(() => {
-            setEstado("qr");
-            setMensaje("No se pudo abrir World App automáticamente. Escanea el QR:");
-          }, 1500);
+          // En móvil fuera de World App → mostramos aviso
+          setEstado("error");
+          setMensaje("⚠️ Esta miniapp solo puede abrirse desde World App en tu celular.");
         } else {
-          // 💻 En escritorio → mostrar QR directo
+          // En escritorio → mostrar QR
           setEstado("qr");
         }
         return;
@@ -57,28 +49,6 @@ const LoginWorldID: React.FC = () => {
       const fp: any = finalPayload;
       console.log("👉 Payload recibido de World App:", fp);
 
-      // Verificación en backend
-      const resp = await fetch("/api/worldid/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          proof: fp.proof,
-          merkle_root: fp.merkle_root,
-          nullifier_hash: fp.nullifier_hash,
-          verification_level: fp.verification_level,
-          action: "futurenet-login",
-          signal_hash: fp.signal_hash,
-        }),
-      });
-
-      const data = await resp.json();
-
-      if (!resp.ok || !data?.ok) {
-        setEstado("error");
-        setMensaje("No se pudo verificar la prueba. Intenta de nuevo.");
-        return;
-      }
-
       // ✅ Guardamos usuario y wallet
       setUsuarioID(fp.nullifier_hash);
       if (fp.wallet_address) {
@@ -86,19 +56,8 @@ const LoginWorldID: React.FC = () => {
         console.log("✅ Wallet Address guardada:", fp.wallet_address);
       }
 
-      // 👇 seguimos con Supabase como respaldo de saldo
-      try {
-        const saldoResp = await fetch("/api/saldo", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        const saldoData = await saldoResp.json();
-        if (saldoResp.ok && saldoData?.saldo !== undefined) {
-          setSaldoWLD(saldoData.saldo);
-        }
-      } catch (err) {
-        console.error("Fallo al consultar saldo:", err);
-      }
+      // ❌ Eliminado el fetch a Supabase (ya no sobreescribe saldo)
+      // El UserContext detecta el walletAddress y obtiene el saldo real desde blockchain
 
       navigate("/bienvenida");
     } catch (e) {

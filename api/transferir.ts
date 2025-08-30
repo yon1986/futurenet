@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSaldoReal } from '../src/utils/blockchain'; // 👈 función on-chain
+import { getSaldoReal } from '../utils/blockchain'; // ✅ corregido (sin /src)
 
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
@@ -21,7 +21,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  // ✅ exige sesión World ID
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: 'unauthorized' });
   if (String(session.lvl).toLowerCase() !== 'orb') {
@@ -40,7 +39,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono,
     } = req.body || {};
 
-    // ✅ Validaciones iniciales
     if (
       typeof cantidadWLD !== 'number' ||
       cantidadWLD <= 0 ||
@@ -53,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // 📌 Obtener usuario (para leer wallet_address)
+    // 📌 Obtener wallet del usuario
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('wallet_address')
@@ -77,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción en supabase
+    // registrar transacción
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -98,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Error registrando transacción' });
     }
 
-    // 🚀 devolvemos éxito y el saldo real
+    // 🚀 Respuesta correcta
     return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
     console.error("❌ Error en transferir:", e);

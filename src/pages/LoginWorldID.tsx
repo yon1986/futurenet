@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 
 const LoginWorldID: React.FC = () => {
-  const { setUsuarioID, setSaldoWLD } = useUser();
+  const { setUsuarioID, setWalletAddress, setSaldoWLD } = useUser();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<"cargando" | "error">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
@@ -35,6 +35,7 @@ const LoginWorldID: React.FC = () => {
       }
 
       const fp: any = finalPayload;
+      console.log("👉 Payload recibido de World App:", fp); // 👈 Debug para ver qué campos trae
 
       // Verificación en backend
       const resp = await fetch("/api/worldid/verify", {
@@ -58,10 +59,17 @@ const LoginWorldID: React.FC = () => {
         return;
       }
 
-      // ✅ Verificación confirmada → guardamos el usuario
+      // ✅ Guardamos datos en contexto
       setUsuarioID(fp.nullifier_hash);
 
-      // 🚀 Nuevo paso: obtener saldo real del backend
+      if (fp.wallet_address) {
+        setWalletAddress(fp.wallet_address);
+        console.log("✅ Wallet Address guardada:", fp.wallet_address);
+      } else {
+        console.warn("⚠️ El payload no contiene wallet_address");
+      }
+
+      // Mantengo tu saldo supabase actual mientras tanto
       try {
         const saldoResp = await fetch("/api/saldo", {
           method: "POST",
@@ -70,8 +78,6 @@ const LoginWorldID: React.FC = () => {
         const saldoData = await saldoResp.json();
         if (saldoResp.ok && saldoData?.saldo !== undefined) {
           setSaldoWLD(saldoData.saldo);
-        } else {
-          console.error("Error al obtener saldo:", saldoData);
         }
       } catch (err) {
         console.error("Fallo al consultar saldo:", err);

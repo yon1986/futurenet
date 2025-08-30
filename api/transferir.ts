@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-// auth por cookie
+/* auth por cookie */
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
 function getSessionFromCookie(req: VercelRequest) {
@@ -11,7 +11,7 @@ function getSessionFromCookie(req: VercelRequest) {
   return verifySession(token);
 }
 
-// supabase
+/* supabase */
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -19,20 +19,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ✅ exige sesión World ID
   const session = getSessionFromCookie(req);
-  console.log("➡️ transferir.ts session:", session);
-
-  if (!session) {
-    console.error("❌ No se encontró sesión en cookie");
-    return res.status(401).json({ error: 'unauthorized' });
-  }
+  if (!session) return res.status(401).json({ error: 'unauthorized' });
   if (String(session.lvl).toLowerCase() !== 'orb') {
-    console.error("❌ Nivel de verificación no permitido:", session.lvl);
     return res.status(403).json({ error: 'verification_level_not_allowed' });
   }
 
   try {
-    console.log("➡️ transferir.ts body recibido:", req.body);
-
     const {
       cantidadWLD,
       tipo,        // 'bancaria' | 'cajero'
@@ -51,17 +43,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof montoQ !== 'number' ||
       montoQ <= 0
     ) {
-      console.error("❌ Datos incompletos:", { cantidadWLD, tipo, montoQ });
       return res.status(400).json({ error: 'Datos incompletos' });
     }
 
     const usuarioID = session.sub as string;
-    console.log("➡️ Usuario ID:", usuarioID);
+
+    // usuario
+    const { data: usuario, error: userError } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('usuario_id', usuarioID)
+      .single();
+
+    if (userError || !usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    if (usuario.saldo_wld < cantidadWLD) {
+      return res.status(400).json({ error: 'Saldo insuficiente' });
+    }
+
+    // actualizar saldo
+    const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
+    const { error: updateError } = await supabase
+      .from('usuarios')
+      .update({ saldo_wld: nuevoSaldo })
+      .eq('usuario_id', usuarioID);
+    if (updateError) return res.status(500).json({ error: 'Error actualizando el saldo' });
 
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción en Supabase
+    // registrar transacción
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -72,20 +83,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       banco: tipo === 'bancaria' ? banco || null : null,
       cuenta: tipo === 'bancaria' ? cuenta || null : null,
       tipo_cuenta: tipo === 'bancaria' ? tipoCuenta || null : null,
-      telefono: tipo === 'cajero' ? telefono || null : null,
+      telefono: telefono || null,   // ✅ siempre guardamos el número si viene
       created_at: new Date(),
     });
+    if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
 
-    if (insertError) {
-      console.error("❌ Error insertando en Supabase:", insertError);
-      return res.status(500).json({ error: 'Error registrando transacción' });
-    }
-
-    console.log("✅ Transacción registrada correctamente, token:", token);
-
-    return res.status(200).json({ ok: true, token });
-  } catch (e) {
-    console.error("❌ transferir error detail:", e);
+    return res.status(200).json({ ok: true, token, nuevoSaldo });
+  } catch {
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

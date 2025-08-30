@@ -1,10 +1,9 @@
-// api/transferir.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSaldoReal } from '../utils/blockchain';
+import { getSaldoReal } from '../utils/blockchain'; // 👈 tu función on-chain
 
+// @ts-ignore
 const { verifySession } = require('./_lib/session');
-
 function getSessionFromCookie(req: VercelRequest) {
   const cookie = req.headers?.cookie || '';
   const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
@@ -18,20 +17,27 @@ const supabase = createClient(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log("📥 Transferir endpoint hit");
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido' });
+    console.log("❌ Método no permitido");
+    return res.status(405).json({ ok: false, error: 'Método no permitido' });
   }
 
   const session = getSessionFromCookie(req);
-  if (!session) return res.status(401).json({ error: 'unauthorized' });
+  if (!session) {
+    console.log("❌ Sesión inválida");
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
   if (String(session.lvl).toLowerCase() !== 'orb') {
-    return res.status(403).json({ error: 'verification_level_not_allowed' });
+    console.log("❌ Nivel de verificación no permitido");
+    return res.status(403).json({ ok: false, error: 'verification_level_not_allowed' });
   }
 
   try {
     const {
       cantidadWLD,
-      tipo,
+      tipo,        // 'bancaria' | 'cajero'
       montoQ,
       nombre,
       banco,
@@ -40,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono,
     } = req.body || {};
 
-    console.log("📩 Body recibido:", req.body);
+    console.log("📦 Body recibido:", req.body);
 
     if (
       typeof cantidadWLD !== 'number' ||
@@ -49,11 +55,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof montoQ !== 'number' ||
       montoQ <= 0
     ) {
-      return res.status(400).json({ error: 'Datos incompletos' });
+      console.log("❌ Datos incompletos");
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
 
     const usuarioID = session.sub as string;
 
+    // 📌 Obtener usuario (para leer walletAddress al menos)
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('wallet_address')
@@ -61,19 +69,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (userError || !usuario) {
-      console.error("❌ Usuario no encontrado en Supabase:", userError);
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      console.log("❌ Usuario no encontrado");
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
     }
 
-    const saldoReal = await getSaldoReal(usuario.wallet_address, console.log);
+    console.log("👛 Wallet encontrada:", usuario.wallet_address);
+
+    // ✅ Verificar saldo real desde blockchain
+    const saldoReal = await getSaldoReal(usuario.wallet_address, (msg: string) => console.log("🔎", msg));
     console.log("💰 Saldo real:", saldoReal);
 
     if (saldoReal < cantidadWLD) {
-      return res.status(400).json({ error: 'Saldo insuficiente (on-chain)', saldoReal });
+      console.log("❌ Saldo insuficiente");
+      return res.status(400).json({ ok: false, error: 'Saldo insuficiente (on-chain)' });
     }
 
+    // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // registrar transacción (👈 estado siempre pendiente)
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -90,15 +104,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (insertError) {
-      console.error("❌ Error insertando transacción:", insertError);
-      return res.status(500).json({ error: 'Error registrando transacción' });
+      console.log("❌ Error registrando transacción:", insertError.message);
+      return res.status(500).json({ ok: false, error: 'Error registrando transacción', details: insertError.message });
     }
 
-    console.log("✅ Transacción registrada con token:", token);
+    console.log("✅ Transacción registrada:", { token, saldoReal });
 
+    // 🚀 devolvemos éxito y el saldo real
     return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
-    console.error("❌ Error en transferir.ts:", e);
-    return res.status(500).json({ error: 'Error en el servidor', details: e.message || e });
+    console.error("🔥 Error inesperado en transferir:", e);
+    return res.status(500).json({ ok: false, error: 'Error en el servidor', details: e.message });
   }
 }

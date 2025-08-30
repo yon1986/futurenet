@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSaldoReal } from '../src/utils/blockchain'; // 👈 FIX: ruta correcta
+import { getSaldoReal } from '../src/utils/blockchain'; // 👈 Import corregido
 
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
@@ -17,6 +17,8 @@ const supabase = createClient(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log("🚀 Entrando a /api/transferir");
+
   if (req.method !== 'POST') {
     console.warn("⚠️ Método no permitido:", req.method);
     return res.status(405).json({ ok: false, error: 'Método no permitido' });
@@ -44,6 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       tipoCuenta,
       telefono,
     } = req.body || {};
+
+    console.log("📩 Body recibido en transferir:", req.body);
 
     if (
       typeof cantidadWLD !== 'number' ||
@@ -108,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(respuesta);
   } catch (e: any) {
-    console.error("❌ Error inesperado en transferir:", e);
+    console.error("❌ Error en /api/transferir:", e);
     return res.status(500).json({ ok: false, error: 'Error en el servidor', details: e?.message || '' });
   }
 }

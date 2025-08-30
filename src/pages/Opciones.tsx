@@ -4,7 +4,7 @@ import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, debugLogs } = useUser();
+  const { usuarioID, saldoWLD, debugLogs, walletAddress, lastPayload } = useUser();
 
   useEffect(() => {
     if (!usuarioID) navigate("/");
@@ -39,6 +39,21 @@ function Opciones() {
           >
             Ver Historial
           </button>
+        </div>
+
+        {/* 🔎 DEBUG VISUAL */}
+        <div className="mt-4 text-left bg-yellow-100 p-3 rounded-lg text-xs text-gray-800">
+          <p className="font-semibold">DEBUG VISUAL</p>
+          <p>Wallet usada: <strong>{walletAddress || "No detectada"}</strong></p>
+          <p>Saldo leído en blockchain: <strong>{saldoWLD} WLD</strong></p>
+        </div>
+
+        {/* 🔎 DEBUG PAYLOAD */}
+        <div className="mt-4 text-left bg-blue-100 p-3 rounded-lg text-xs text-gray-800">
+          <p className="font-semibold">DEBUG PAYLOAD (último login)</p>
+          <pre className="whitespace-pre-wrap break-words">
+            {JSON.stringify(lastPayload, null, 2)}
+          </pre>
         </div>
 
         {/* 🔎 DEBUG MODE */}

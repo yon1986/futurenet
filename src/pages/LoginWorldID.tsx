@@ -9,7 +9,7 @@ import { useUser } from "../context/UserContext";
 import QRCode from "react-qr-code";
 
 const LoginWorldID: React.FC = () => {
-  const { setUsuarioID, setWalletAddress } = useUser();
+  const { setUsuarioID, setWalletAddress, setLastPayload } = useUser();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
@@ -47,33 +47,32 @@ const LoginWorldID: React.FC = () => {
       const fp: any = finalPayload;
       console.log("👉 Payload recibido de World App:", fp);
       setPayloadDebug(fp);
+      setLastPayload(fp);
 
       // ✅ Guardamos usuarioID
       setUsuarioID(fp.nullifier_hash);
 
-      // 2️⃣ Intentar obtener wallets del usuario
+      // 2️⃣ Intentar obtener wallets
       try {
         console.log("🔎 Intentando obtener wallets con MiniKit...");
         const wallets: any = await (MiniKit as any).commandsAsync.getWallets?.();
-
         console.log("👉 Respuesta de getWallets:", wallets);
 
         if (wallets && Array.isArray(wallets) && wallets.length > 0) {
           const userWallet = wallets[0].address;
           setWalletAddress(userWallet);
           console.log("✅ Wallet Address obtenida:", userWallet);
+        } else if (fp?.wallet) {
+          setWalletAddress(fp.wallet);
+          console.log("✅ Wallet Address obtenida desde payload:", fp.wallet);
         } else {
-          console.warn("⚠️ No se encontraron wallets en World App, usando payload si hay");
-          if (fp?.wallet) {
-            setWalletAddress(fp.wallet);
-            console.log("✅ Wallet Address obtenida desde payload:", fp.wallet);
-          }
+          console.warn("⚠️ No se encontró ninguna wallet en World App");
         }
       } catch (err) {
         console.error("❌ Error obteniendo wallets:", err);
         if (fp?.wallet) {
           setWalletAddress(fp.wallet);
-          console.log("✅ Wallet Address obtenida fallback desde payload:", fp.wallet);
+          console.log("✅ Wallet Address fallback desde payload:", fp.wallet);
         }
       }
 

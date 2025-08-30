@@ -27,6 +27,8 @@ interface UserContextType {
   setTransacciones: (t: Transaccion[]) => void;
   debugLogs: string[];
   addDebugLog: (msg: string) => void;
+  lastPayload: any;
+  setLastPayload: (p: any) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -38,6 +40,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [precioWLD, setPrecioWLD] = useState<number>(8);
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [lastPayload, setLastPayload] = useState<any>(null);
 
   const addDebugLog = (msg: string) => {
     console.log("🪵 DEBUG:", msg);
@@ -69,7 +72,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (walletAddress) {
         addDebugLog(`📌 Iniciando consulta de saldo para wallet: ${walletAddress}`);
         const saldo = await getSaldoReal(walletAddress, addDebugLog);
-
         console.log("🔎 Saldo desde blockchain (Alchemy):", saldo);
         setSaldoWLD(saldo);
         addDebugLog(`✅ Saldo actualizado en contexto: ${saldo} WLD`);
@@ -125,6 +127,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setTransacciones,
         debugLogs,
         addDebugLog,
+        lastPayload,
+        setLastPayload,
       }}
     >
       {children}

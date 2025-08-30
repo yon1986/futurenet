@@ -61,7 +61,7 @@ function RetiroCuenta() {
     const stepMs = 3000;
 
     while (Date.now() < deadline) {
-      const c = await fetch("/api/pay?action=status", {
+      const c = await fetch("/api/pay/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -133,15 +133,15 @@ function RetiroCuenta() {
         return;
       }
 
-      // 🔎 Log para depuración
-      const raw = await rx.text();
-      console.log("Respuesta cruda del backend /api/transferir:", raw);
+      // ✅ leer respuesta cruda y parsear seguro
+      const text = await rx.text();
+      console.log("Respuesta cruda de /api/transferir:", text);
 
       let data: any = {};
       try {
-        data = JSON.parse(raw);
+        data = JSON.parse(text);
       } catch {
-        data = { error: "Respuesta no es JSON válido", raw };
+        data = { error: "Respuesta no es JSON válido", raw: text };
       }
 
       if (rx.ok && data?.ok) {
@@ -149,7 +149,7 @@ function RetiroCuenta() {
         setTokenGenerado(data.token);
         navigate("/historial", { replace: true });
       } else {
-        alert(`❌ Error: ${data?.error || "No se pudo procesar"}`);
+        alert(`❌ Error: ${data?.error || "No se pudo procesar"}\n${data?.raw || ""}`);
       }
     } catch (e: any) {
       if (e?.message === "SESSION_EXPIRED") {

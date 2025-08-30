@@ -6,7 +6,7 @@ import {
 } from "@worldcoin/minikit-js";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-import QRCode from "qrcode.react";
+import { QRCode } from "qrcode.react"; // ✅ CORREGIDO: named import
 
 const LoginWorldID: React.FC = () => {
   const { setUsuarioID, setWalletAddress, setSaldoWLD } = useUser();

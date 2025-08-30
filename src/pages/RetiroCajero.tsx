@@ -1,16 +1,17 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useUser } from "../context/UserContext";
-import { MiniKit } from "@worldcoin/minikit-js";
 
 function RetiroCajero() {
   const navigate = useNavigate();
-  const { precioWLD } = useUser();
+  const { saldoWLD, setSaldoWLD, precioWLD } = useUser();
 
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [telefono, setTelefono] = useState("");
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [error, setError] = useState<string>("");
+  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
+  const [procesando, setProcesando] = useState(false);
 
   const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const totalSinComision = montoQ * 0.85;
@@ -37,26 +38,40 @@ function RetiroCajero() {
       return;
     }
 
+    setProcesando(true);
     try {
-      // 🚀 Enviamos acción a World App
-      const action = {
-        action: "futurenet-exchange",
-        value: cantidadWLD.toString(),
-      };
+      // 🚀 Llamar a tu backend /api/transferir
+      const res = await fetch("/api/transferir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          cantidadWLD,
+          tipo: "cajero",
+          montoQ: totalARecibir,
+          telefono,
+        }),
+      });
 
-      const result = await MiniKit.commandsAsync.sendTransaction(action);
-
-      if ((result as any)?.status === "error") {
-        setError(
-          "❌ No tienes suficientes WLD en tu billetera. Revisa tu saldo en World App e intenta de nuevo."
-        );
+      if (res.status === 401) {
+        setError("Tu sesión expiró. Inicia nuevamente con World ID.");
+        navigate("/login-worldid");
         return;
       }
 
-      // 🚀 Ya no setTransacciones manualmente
-      navigate("/historial", { replace: true });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.ok) {
+        // ✅ saldo real desde blockchain
+        setSaldoWLD(data.saldoReal);
+        setTokenGenerado(data.token);
+        navigate("/historial", { replace: true });
+      } else {
+        setError(`❌ Error: ${data?.error || "No se pudo procesar"}`);
+      }
     } catch (err) {
       setError("⚠️ Hubo un problema al procesar la transacción.");
+    } finally {
+      setProcesando(false);
     }
   };
 
@@ -125,12 +140,23 @@ function RetiroCajero() {
 
         {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
 
-        <button
-          onClick={confirmarRetiro}
-          className="mt-4 w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
-        >
-          Aprobar con World App
-        </button>
+        {!tokenGenerado ? (
+          <button
+            onClick={confirmarRetiro}
+            disabled={procesando}
+            className={`mt-4 w-full px-6 py-3 rounded-lg text-white shadow transition ${
+              procesando
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {procesando ? "Procesando..." : "Confirmar Retiro"}
+          </button>
+        ) : (
+          <div className="mt-4 text-green-700 font-semibold">
+            ✅ Token generado: {tokenGenerado}
+          </div>
+        )}
 
         <p className="mt-4 text-xs text-gray-500">
           💡 Recuerda consultar tu saldo en World App antes de aprobar.

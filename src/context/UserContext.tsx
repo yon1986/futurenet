@@ -17,8 +17,8 @@ interface Transaccion {
 interface UserContextType {
   usuarioID: string | null;
   setUsuarioID: (id: string | null) => void;
-  walletAddress: string | null;                       // 👈 nuevo
-  setWalletAddress: (addr: string | null) => void;    // 👈 nuevo
+  walletAddress: string | null;
+  setWalletAddress: (addr: string | null) => void;
   saldoWLD: number;
   setSaldoWLD: (saldo: number) => void;
   precioWLD: number;
@@ -30,10 +30,29 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [usuarioID, setUsuarioIDState] = useState<string | null>(null);
-  const [walletAddress, setWalletAddressState] = useState<string | null>(null); // 👈 nuevo
+  const [walletAddress, setWalletAddressState] = useState<string | null>(null);
   const [saldoWLD, setSaldoWLDState] = useState<number>(0);
   const [precioWLD, setPrecioWLD] = useState<number>(8);
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
+
+  // ✅ Precio dinámico desde Binance (USD → GTQ con ajuste de -0.03)
+  useEffect(() => {
+    async function fetchPrecio() {
+      try {
+        const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=WLDUSDT");
+        const data = await res.json();
+        const precioUSD = parseFloat(data.price);
+        const precioGTQ = precioUSD * 7.69 - 0.03;
+        setPrecioWLD(precioGTQ);
+      } catch (err) {
+        console.error("Error obteniendo precio WLD:", err);
+      }
+    }
+
+    fetchPrecio();
+    const interval = setInterval(fetchPrecio, 60000); // cada 1 min
+    return () => clearInterval(interval);
+  }, []);
 
   const setUsuarioID = (id: string | null) => {
     setUsuarioIDState(id);
@@ -44,7 +63,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setWalletAddress = (addr: string | null) => { // 👈 nuevo
+  const setWalletAddress = (addr: string | null) => {
     setWalletAddressState(addr);
     if (addr) {
       localStorage.setItem("walletAddress", addr);
@@ -66,8 +85,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       value={{
         usuarioID,
         setUsuarioID,
-        walletAddress,            // 👈 nuevo
-        setWalletAddress,         // 👈 nuevo
+        walletAddress,
+        setWalletAddress,
         saldoWLD,
         setSaldoWLD,
         precioWLD,

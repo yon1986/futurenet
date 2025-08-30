@@ -16,7 +16,6 @@ function RetiroCuenta() {
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
-  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
@@ -56,40 +55,6 @@ function RetiroCuenta() {
     setMostrarResumen(true);
   };
 
-  async function esperarConfirmacion(reference: string): Promise<void> {
-    const deadline = Date.now() + 3 * 60 * 1000; // 3 min
-    const stepMs = 3000;
-
-    while (Date.now() < deadline) {
-      const c = await fetch("/api/pay/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ reference }),
-      });
-
-      if (c.status === 401) throw new Error("SESSION_EXPIRED");
-
-      let confirm: any = {};
-      try {
-        confirm = await c.json();
-      } catch {
-        throw new Error("No se pudo leer la confirmación del pago.");
-      }
-
-      if (!c.ok) {
-        if (confirm?.error === "onchain_failed")
-          throw new Error("La transacción en la red falló.");
-        throw new Error(confirm?.error || "Error confirmando el pago.");
-      }
-
-      if (confirm?.status === "confirmed") return;
-
-      await new Promise((r) => setTimeout(r, stepMs));
-    }
-    throw new Error("La red está lenta. Revisa tu historial en unos minutos.");
-  }
-
   const confirmarRetiro = async () => {
     if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
       alert("El número de teléfono debe tener exactamente 8 dígitos.");
@@ -104,13 +69,7 @@ function RetiroCuenta() {
     setConfirmando(true);
 
     try {
-      // 1) Cobrar WLD
-      const res = await cobrarWLD(Number(cantidadWLD));
-      if (res.status === "processing") {
-        await esperarConfirmacion(res.reference);
-      }
-
-      // 2) Ejecutar retiro (bancaria) contra tu backend
+      // ⚡️ Aquí llamamos al backend
       const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,37 +86,11 @@ function RetiroCuenta() {
         }),
       });
 
-      if (rx.status === 401) {
-        alert("Tu sesión expiró. Inicia nuevamente con World ID.");
-        navigate("/login-worldid");
-        return;
-      }
-
-      // ✅ leer respuesta cruda y parsear seguro
       const text = await rx.text();
-      console.log("Respuesta cruda de /api/transferir:", text);
+      alert("Respuesta cruda del backend: " + text);
 
-      let data: any = {};
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { error: "Respuesta no es JSON válido", raw: text };
-      }
-
-      if (rx.ok && data?.ok) {
-        setSaldoWLD(data.saldoReal);
-        setTokenGenerado(data.token);
-        navigate("/historial", { replace: true });
-      } else {
-        alert(`❌ Error: ${data?.error || "No se pudo procesar"}\n${data?.raw || ""}`);
-      }
     } catch (e: any) {
-      if (e?.message === "SESSION_EXPIRED") {
-        alert("Tu sesión expiró. Inicia nuevamente con World ID.");
-        navigate("/login-worldid");
-      } else {
-        alert(e?.message || "Error al procesar el pago.");
-      }
+      alert(e?.message || "Error al procesar el pago.");
     } finally {
       setConfirmando(false);
     }
@@ -191,33 +124,6 @@ function RetiroCuenta() {
             Total a recibir: Q{total.toFixed(2)}
           </p>
 
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="Número de teléfono"
-            value={telefono}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^\d*$/.test(v)) setTelefono(v);
-            }}
-            className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
-            required
-          />
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="Confirmar número de teléfono"
-            value={confirmarTelefono}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^\d*$/.test(v)) setConfirmarTelefono(v);
-            }}
-            className="p-3 border border-gray-300 rounded-lg w-full"
-            required
-          />
-
           <div className="flex justify-between mt-5">
             <button
               onClick={() => setMostrarResumen(false)}
@@ -237,25 +143,6 @@ function RetiroCuenta() {
               {confirmando ? "Procesando..." : "Confirmar"}
             </button>
           </div>
-        </div>
-      ) : tokenGenerado ? (
-        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
-          <h2 className="text-lg font-semibold mb-4 text-green-600">
-            ✅ Retiro solicitado
-          </h2>
-          <p className="mb-4">
-            Tu token para reclamar el retiro es:{" "}
-            <strong className="text-xl">{tokenGenerado}</strong>
-          </p>
-          <p className="text-sm text-gray-600 mb-4">
-            Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.
-          </p>
-          <button
-            onClick={() => navigate("/historial")}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            Ver Historial
-          </button>
         </div>
       ) : (
         <form
@@ -299,10 +186,7 @@ function RetiroCuenta() {
             type="text"
             placeholder="Número de cuenta"
             value={cuenta}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^\d*$/.test(v)) setCuenta(v);
-            }}
+            onChange={(e) => setCuenta(e.target.value)}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />
@@ -310,10 +194,7 @@ function RetiroCuenta() {
             type="text"
             placeholder="Confirmar número de cuenta"
             value={confirmarCuenta}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^\d*$/.test(v)) setConfirmarCuenta(v);
-            }}
+            onChange={(e) => setConfirmarCuenta(e.target.value)}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />

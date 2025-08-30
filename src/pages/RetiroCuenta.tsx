@@ -56,40 +56,6 @@ function RetiroCuenta() {
     setMostrarResumen(true);
   };
 
-  async function esperarConfirmacion(reference: string): Promise<void> {
-    const deadline = Date.now() + 3 * 60 * 1000; // 3 min
-    const stepMs = 3000;
-
-    while (Date.now() < deadline) {
-      const c = await fetch("/api/pay/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ reference }),
-      });
-
-      if (c.status === 401) throw new Error("SESSION_EXPIRED");
-
-      let confirm: any = {};
-      try {
-        confirm = await c.json();
-      } catch {
-        throw new Error("No se pudo leer la confirmación del pago.");
-      }
-
-      if (!c.ok) {
-        if (confirm?.error === "onchain_failed")
-          throw new Error("La transacción en la red falló.");
-        throw new Error(confirm?.error || "Error confirmando el pago.");
-      }
-
-      if (confirm?.status === "confirmed") return;
-
-      await new Promise((r) => setTimeout(r, stepMs));
-    }
-    throw new Error("La red está lenta. Revisa tu historial en unos minutos.");
-  }
-
   const confirmarRetiro = async () => {
     if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
       alert("El número de teléfono debe tener exactamente 8 dígitos.");
@@ -104,13 +70,7 @@ function RetiroCuenta() {
     setConfirmando(true);
 
     try {
-      // 1) Cobrar WLD
-      const res = await cobrarWLD(Number(cantidadWLD));
-      if (res.status === "processing") {
-        await esperarConfirmacion(res.reference);
-      }
-
-      // 2) Ejecutar retiro (bancaria) contra tu backend
+      // 🚀 Ejecutar retiro (bancaria) contra tu backend
       const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,13 +87,6 @@ function RetiroCuenta() {
         }),
       });
 
-      if (rx.status === 401) {
-        alert("Tu sesión expiró. Inicia nuevamente con World ID.");
-        navigate("/login-worldid");
-        return;
-      }
-
-      // 📌 Capturar respuesta cruda para debug
       const raw = await rx.text();
       console.log("📩 Respuesta cruda del backend:", raw);
 
@@ -145,20 +98,14 @@ function RetiroCuenta() {
       }
 
       if (rx.ok && data?.ok) {
-        // ✅ ahora usamos el saldo real devuelto por el backend
         setSaldoWLD(data.saldoReal);
         setTokenGenerado(data.token);
         navigate("/historial", { replace: true });
       } else {
-        alert(`❌ Error: ${data?.error || "No se pudo procesar"} `);
+        alert(`❌ Error: ${data?.error || "No se pudo procesar"}`);
       }
     } catch (e: any) {
-      if (e?.message === "SESSION_EXPIRED") {
-        alert("Tu sesión expiró. Inicia nuevamente con World ID.");
-        navigate("/login-worldid");
-      } else {
-        alert(e?.message || "Error al procesar el pago.");
-      }
+      alert(e?.message || "Error al procesar el pago.");
     } finally {
       setConfirmando(false);
     }

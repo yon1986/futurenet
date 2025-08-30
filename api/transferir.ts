@@ -1,7 +1,16 @@
+// api/transferir.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { getSaldoReal } from '../utils/blockchain';
+
 const { verifySession } = require('./_lib/session');
+
+function getSessionFromCookie(req: VercelRequest) {
+  const cookie = req.headers?.cookie || '';
+  const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
+  const token = m && m[1];
+  return verifySession(token);
+}
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -9,15 +18,17 @@ const supabase = createClient(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  const session = getSessionFromCookie(req);
+  if (!session) return res.status(401).json({ error: 'unauthorized' });
+  if (String(session.lvl).toLowerCase() !== 'orb') {
+    return res.status(403).json({ error: 'verification_level_not_allowed' });
+  }
+
   try {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ ok: false, error: 'Método no permitido' });
-    }
-
-    // ✅ exige sesión
-    const session = verifySession(req.headers.cookie?.match(/fn_session=([^;]+)/)?.[1]);
-    if (!session) return res.status(401).json({ ok: false, error: 'unauthorized' });
-
     const {
       cantidadWLD,
       tipo,
@@ -29,6 +40,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono,
     } = req.body || {};
 
+    console.log("📩 Body recibido:", req.body);
+
     if (
       typeof cantidadWLD !== 'number' ||
       cantidadWLD <= 0 ||
@@ -36,12 +49,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof montoQ !== 'number' ||
       montoQ <= 0
     ) {
-      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+      return res.status(400).json({ error: 'Datos incompletos' });
     }
 
     const usuarioID = session.sub as string;
 
-    // 📌 Buscar wallet en supabase
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('wallet_address')
@@ -49,19 +61,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (userError || !usuario) {
-      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+      console.error("❌ Usuario no encontrado en Supabase:", userError);
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // ✅ Verificar saldo real en blockchain
-    const saldoReal = await getSaldoReal(usuario.wallet_address, () => {});
+    const saldoReal = await getSaldoReal(usuario.wallet_address, console.log);
+    console.log("💰 Saldo real:", saldoReal);
+
     if (saldoReal < cantidadWLD) {
-      return res.status(400).json({ ok: false, error: 'Saldo insuficiente (on-chain)' });
+      return res.status(400).json({ error: 'Saldo insuficiente (on-chain)', saldoReal });
     }
 
-    // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -78,14 +90,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (insertError) {
-      return res.status(500).json({ ok: false, error: 'Error registrando transacción' });
+      console.error("❌ Error insertando transacción:", insertError);
+      return res.status(500).json({ error: 'Error registrando transacción' });
     }
 
-    // 🚀 Respuesta siempre en JSON
-    return res.status(200).json({ ok: true, token, saldoReal });
+    console.log("✅ Transacción registrada con token:", token);
 
+    return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
-    console.error("❌ Error inesperado en /api/transferir:", e);
-    return res.status(500).json({ ok: false, error: 'Error en el servidor', details: e.message });
+    console.error("❌ Error en transferir.ts:", e);
+    return res.status(500).json({ error: 'Error en el servidor', details: e.message || e });
   }
 }

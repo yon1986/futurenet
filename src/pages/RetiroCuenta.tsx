@@ -133,11 +133,15 @@ function RetiroCuenta() {
         return;
       }
 
+      // 🔎 Log para depuración
+      const raw = await rx.text();
+      console.log("Respuesta cruda del backend /api/transferir:", raw);
+
       let data: any = {};
       try {
-        data = await rx.json();
+        data = JSON.parse(raw);
       } catch {
-        data = { error: "Respuesta vacía del servidor" };
+        data = { error: "Respuesta no es JSON válido", raw };
       }
 
       if (rx.ok && data?.ok) {

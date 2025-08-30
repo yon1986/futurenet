@@ -18,14 +18,14 @@ const supabase = createClient(
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido' });
+    return res.status(405).json({ ok: false, error: 'Método no permitido' });
   }
 
   // ✅ exige sesión World ID
   const session = getSessionFromCookie(req);
-  if (!session) return res.status(401).json({ error: 'unauthorized' });
+  if (!session) return res.status(401).json({ ok: false, error: 'unauthorized' });
   if (String(session.lvl).toLowerCase() !== 'orb') {
-    return res.status(403).json({ error: 'verification_level_not_allowed' });
+    return res.status(403).json({ ok: false, error: 'verification_level_not_allowed' });
   }
 
   try {
@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof montoQ !== 'number' ||
       montoQ <= 0
     ) {
-      return res.status(400).json({ error: 'Datos incompletos' });
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
 
     const usuarioID = session.sub as string;
@@ -60,13 +60,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (userError || !usuario) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
     }
 
     // ✅ Verificar saldo real desde blockchain
     const saldoReal = await getSaldoReal(usuario.wallet_address);
     if (saldoReal < cantidadWLD) {
-      return res.status(400).json({ error: 'Saldo insuficiente (on-chain)' });
+      return res.status(400).json({ ok: false, error: 'Saldo insuficiente (on-chain)' });
     }
 
     // token único
@@ -89,13 +89,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (insertError) {
-      return res.status(500).json({ error: 'Error registrando transacción', details: insertError.message });
+      return res.status(500).json({ ok: false, error: 'Error registrando transacción', details: insertError.message });
     }
 
     // 🚀 devolvemos éxito y el saldo real (no actualizado en Supabase)
     return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
     console.error("❌ Error inesperado en transferir:", e);
-    return res.status(500).json({ error: 'Error en el servidor', details: e?.message || '' });
+    return res.status(500).json({ ok: false, error: 'Error en el servidor', details: e?.message || '' });
   }
 }

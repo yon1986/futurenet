@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
-
+import { getSaldoReal } from "../utils/blockchain"; // usamos el archivo que ya tenés
 // @ts-ignore
 const { verifySession } = require("./_lib/session");
 
@@ -55,6 +55,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
+    // 🔑 Buscar wallet_address del usuario
+    const { data: usuario, error: userError } = await supabase
+      .from("usuarios")
+      .select("wallet_address")
+      .eq("usuario_id", usuarioID)
+      .single();
+
+    if (userError || !usuario?.wallet_address) {
+      return res.status(404).json({ ok: false, error: "Usuario sin wallet registrada" });
+    }
+
+    // 🔍 Verificar saldo real en blockchain
+    const saldoReal = await getSaldoReal(usuario.wallet_address, console.log);
+    console.log("💰 Saldo real:", saldoReal);
+
+    if (saldoReal < cantidadWLD) {
+      return res.status(400).json({ ok: false, error: "Saldo insuficiente (on-chain)" });
+    }
+
     // 🔑 token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -83,7 +102,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log("✅ Transacción registrada:", { token });
 
-    return res.status(200).json({ ok: true, token });
+    // 🚀 Devolver respuesta con saldo real actualizado
+    return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
     console.error("🔥 Error inesperado en transferir:", e);
     return res

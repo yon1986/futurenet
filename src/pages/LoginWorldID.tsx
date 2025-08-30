@@ -6,18 +6,28 @@ import {
 } from "@worldcoin/minikit-js";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
+import QRCode from "qrcode.react";
 
 const LoginWorldID: React.FC = () => {
   const { setUsuarioID, setWalletAddress, setSaldoWLD } = useUser();
   const navigate = useNavigate();
-  const [estado, setEstado] = useState<"cargando" | "error">("cargando");
+  const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
+
+  const deepLink = "worldcoin://minikit/v1/verify?action=futurenet-login";
 
   const ejecutarVerificacion = async () => {
     try {
       if (!MiniKit.isInstalled()) {
-        setEstado("error");
-        setMensaje("Abre esta Mini App desde World App.");
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isMobile) {
+          // 🚀 En móvil → abrir directamente World App
+          window.location.href = deepLink;
+        } else {
+          // 💻 En escritorio → mostrar QR para escanear
+          setEstado("qr");
+        }
         return;
       }
 
@@ -35,7 +45,7 @@ const LoginWorldID: React.FC = () => {
       }
 
       const fp: any = finalPayload;
-      console.log("👉 Payload recibido de World App:", fp); // 👈 Debug para ver qué campos trae
+      console.log("👉 Payload recibido de World App:", fp);
 
       // Verificación en backend
       const resp = await fetch("/api/worldid/verify", {
@@ -59,17 +69,15 @@ const LoginWorldID: React.FC = () => {
         return;
       }
 
-      // ✅ Guardamos datos en contexto
+      // ✅ Guardamos usuario y wallet
       setUsuarioID(fp.nullifier_hash);
 
       if (fp.wallet_address) {
         setWalletAddress(fp.wallet_address);
         console.log("✅ Wallet Address guardada:", fp.wallet_address);
-      } else {
-        console.warn("⚠️ El payload no contiene wallet_address");
       }
 
-      // Mantengo tu saldo supabase actual mientras tanto
+      // 👇 Seguimos usando Supabase como respaldo de saldo (por ahora)
       try {
         const saldoResp = await fetch("/api/saldo", {
           method: "POST",
@@ -110,6 +118,16 @@ const LoginWorldID: React.FC = () => {
           >
             Reintentar verificación
           </button>
+        )}
+
+        {estado === "qr" && (
+          <div className="flex flex-col items-center space-y-4">
+            <p className="text-gray-700 text-sm">
+              Escanea este código QR con tu celular para abrir la miniapp en
+              World App:
+            </p>
+            <QRCode value={deepLink} size={200} />
+          </div>
         )}
 
         <button

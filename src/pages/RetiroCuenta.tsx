@@ -61,7 +61,7 @@ function RetiroCuenta() {
     const stepMs = 3000;
 
     while (Date.now() < deadline) {
-      const c = await fetch("/api/pay/status", {
+      const c = await fetch("/api/pay?action=status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -133,9 +133,14 @@ function RetiroCuenta() {
         return;
       }
 
-      const data = await rx.json().catch(() => ({}));
+      let data: any = {};
+      try {
+        data = await rx.json();
+      } catch {
+        data = { error: "Respuesta vacía del servidor" };
+      }
+
       if (rx.ok && data?.ok) {
-        // ✅ ahora usamos el saldo real devuelto por el backend
         setSaldoWLD(data.saldoReal);
         setTokenGenerado(data.token);
         navigate("/historial", { replace: true });

@@ -17,7 +17,9 @@ const supabase = createClient(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
 
   // ✅ exige sesión World ID
   const session = getSessionFromCookie(req);
@@ -86,11 +88,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       created_at: new Date(),
     });
 
-    if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
+    if (insertError) {
+      return res.status(500).json({ error: 'Error registrando transacción', details: insertError.message });
+    }
 
     // 🚀 devolvemos éxito y el saldo real (no actualizado en Supabase)
     return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
-    return res.status(500).json({ error: 'Error en el servidor', details: e.message });
+    console.error("❌ Error inesperado en transferir:", e);
+    return res.status(500).json({ error: 'Error en el servidor', details: e?.message || '' });
   }
 }

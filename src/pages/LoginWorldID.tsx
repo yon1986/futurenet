@@ -1,24 +1,20 @@
-// src/pages/LoginWorldID.tsx
 import React, { useEffect, useState } from "react";
 import {
   MiniKit,
   VerifyCommandInput,
   VerificationLevel,
-  ISuccessResult,
 } from "@worldcoin/minikit-js";
 import { useNavigate } from "react-router-dom";
-// No cambiamos tu UserContext todavía, solo usamos setUsuarioID como acordamos
 import { useUser } from "../context/UserContext";
 
 const LoginWorldID: React.FC = () => {
-  const { setUsuarioID } = useUser();
+  const { setUsuarioID, setSaldoWLD } = useUser();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<"cargando" | "error">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
 
   const ejecutarVerificacion = async () => {
     try {
-      // Debe ser true dentro de World App y con MiniKit.install() ya llamado en MiniKitProvider
       if (!MiniKit.isInstalled()) {
         setEstado("error");
         setMensaje("Abre esta Mini App desde World App.");
@@ -27,23 +23,20 @@ const LoginWorldID: React.FC = () => {
 
       const payload: VerifyCommandInput = {
         action: "futurenet-login",
-        verification_level: VerificationLevel.Orb, // exige verificación vía Orb
+        verification_level: VerificationLevel.Orb,
       };
 
-      // Abre el drawer nativo con el botón "Aprobar"
       const { finalPayload } = await MiniKit.commandsAsync.verify(payload);
 
-      // Si el usuario cancela o hay error en el drawer
       if ((finalPayload as any)?.status === "error") {
         setEstado("error");
         setMensaje("La verificación fue cancelada. Intenta de nuevo.");
         return;
       }
 
-      // finalPayload incluye proof, nullifier_hash, merkle_root, verification_level, etc.
       const fp: any = finalPayload;
 
-      // Enviar el proof al backend para verificación oficial
+      // Verificación en backend
       const resp = await fetch("/api/worldid/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,7 +46,7 @@ const LoginWorldID: React.FC = () => {
           nullifier_hash: fp.nullifier_hash,
           verification_level: fp.verification_level,
           action: "futurenet-login",
-          signal_hash: fp.signal_hash, // puede no venir; lo enviamos si existe
+          signal_hash: fp.signal_hash,
         }),
       });
 
@@ -65,8 +58,25 @@ const LoginWorldID: React.FC = () => {
         return;
       }
 
-      // ✅ Verificación confirmada por el backend
+      // ✅ Verificación confirmada → guardamos el usuario
       setUsuarioID(fp.nullifier_hash);
+
+      // 🚀 Nuevo paso: obtener saldo real del backend
+      try {
+        const saldoResp = await fetch("/api/saldo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const saldoData = await saldoResp.json();
+        if (saldoResp.ok && saldoData?.saldo !== undefined) {
+          setSaldoWLD(saldoData.saldo);
+        } else {
+          console.error("Error al obtener saldo:", saldoData);
+        }
+      } catch (err) {
+        console.error("Fallo al consultar saldo:", err);
+      }
+
       navigate("/bienvenida");
     } catch (e) {
       setEstado("error");

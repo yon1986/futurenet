@@ -54,31 +54,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const reference: string | undefined = payload?.reference;
     if (!reference) return res.status(400).json({ error: "missing_reference" });
 
+    // Buscar el pago en Supabase
     const { data: pay, error: qErr } = await supabase.from("payments").select("*").eq("reference", reference).single();
     if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
     if (pay.status === "confirmed") {
-      const { data: user } = await supabase.from("usuarios").select("*").eq("usuario_id", usuarioID).single();
-      return res.status(200).json({ ok: true, status: "confirmed", reference, credited: pay.amount_wld, saldo: user?.saldo_wld });
+      return res.status(200).json({ ok: true, status: "confirmed", reference });
     }
     if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
 
-    // Guarda SIEMPRE el payload en la fila para debug
+    // Guarda payload para depuración
     await supabase.from("payments").update({ raw_payload: payload }).eq("id", pay.id);
 
-    // Extrae txId en cualquier formato y guárdalo
+    // Extraer txId
     const txId = findTxIdDeep(payload);
     if (txId && pay.tx_id !== txId) {
       await supabase.from("payments").update({ tx_id: txId }).eq("id", pay.id);
     }
 
-    // Pasa a processing ya mismo
+    // Marcar como processing
     if (pay.status !== "processing") {
       await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
     }
 
-    // Si no hay credenciales o no hay txId aún → deja que el front haga polling
+    // Verificar en portal de World App
     const appId = process.env.APP_ID;
     const apiKey = process.env.DEV_PORTAL_API_KEY;
     if (!appId || !apiKey || !txId) {
@@ -107,19 +107,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "recipient_mismatch" });
     }
 
-    // Confirmar y acreditar
-    await supabase.from("payments").update({ status: "confirmed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
+    // Confirmar transacción en Supabase (solo historial, sin tocar saldo_wld)
+    await supabase.from("payments").update({
+      status: "confirmed",
+      tx_hash: tx?.transaction_hash ?? null
+    }).eq("id", pay.id);
 
-    const { data: user } = await supabase.from("usuarios").select("*").eq("usuario_id", usuarioID).single();
-    const acreditado = Number(pay.amount_wld || 0);
-    if (!user) {
-      await supabase.from("usuarios").insert({ usuario_id: usuarioID, saldo_wld: acreditado });
-      return res.status(200).json({ ok: true, status: "confirmed", reference, credited: acreditado, saldo: acreditado, tx });
-    } else {
-      const nuevoSaldo = Number(user.saldo_wld || 0) + acreditado;
-      await supabase.from("usuarios").update({ saldo_wld: nuevoSaldo }).eq("usuario_id", usuarioID);
-      return res.status(200).json({ ok: true, status: "confirmed", reference, credited: acreditado, saldo: nuevoSaldo, tx });
-    }
+    return res.status(200).json({ ok: true, status: "confirmed", reference, tx });
   } catch (e: any) {
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }

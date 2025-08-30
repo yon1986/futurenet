@@ -1,12 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
 
 function Historial() {
   const navigate = useNavigate();
@@ -20,12 +14,14 @@ function Historial() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ usuarioID }),
+        body: JSON.stringify({ usuarioID }), // 👈 enviar ID explícito
       });
 
       const data = await res.json();
       if (res.ok && data?.transacciones) {
         setTransacciones(data.transacciones);
+      } else {
+        console.error("⚠️ Error cargando historial:", data?.error);
       }
     } catch (err) {
       console.error("❌ Error cargando historial:", err);
@@ -41,28 +37,8 @@ function Historial() {
     }
 
     fetchHistorial(); // primera carga
-
-    // 👇 suscripción en tiempo real a cambios de estado en Supabase
-    const channel = supabase
-      .channel("transacciones-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "transacciones",
-          filter: `usuario_id=eq.${usuarioID}`,
-        },
-        (payload) => {
-          console.log("Cambio detectado en transacciones:", payload);
-          fetchHistorial(); // recargar historial al instante
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const interval = setInterval(fetchHistorial, 10000); // refrescar cada 10s
+    return () => clearInterval(interval);
   }, [usuarioID, navigate]);
 
   if (cargando) {
@@ -111,6 +87,7 @@ function Historial() {
               <p className="text-sm">
                 <span className="font-semibold">Token:</span> {t.token}
               </p>
+              {/* 👇 mostramos teléfono si existe */}
               {t.telefono && (
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Teléfono:</span> {t.telefono}

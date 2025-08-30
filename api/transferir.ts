@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSaldoReal } from '../utils/blockchain';
+// 👇 Usar el de backend, NO el de src/utils
+import { getSaldoReal } from './_lib/blockchain';
 
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
@@ -55,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // 📌 Obtener usuario (para leer walletAddress al menos)
+    // 📌 Obtener usuario (solo para validar existencia y wallet)
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
       .select('wallet_address')

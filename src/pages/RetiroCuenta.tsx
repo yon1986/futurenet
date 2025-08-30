@@ -161,7 +161,64 @@ function RetiroCuenta() {
           </div>
         ) : (
           <form className="flex flex-col gap-3 w-full text-left">
-            {/* ... campos de formulario idénticos ... */}
+            <input
+              type="text"
+              placeholder="Nombre completo"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            />
+
+            <select
+              value={banco}
+              onChange={(e) => setBanco(e.target.value)}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            >
+              <option value="">Selecciona el banco</option>
+              <option>Banco Industrial</option>
+              <option>Banrural</option>
+              <option>BAC</option>
+              <option>BAM</option>
+              <option>G&T</option>
+              <option>Bantrab</option>
+              <option>Promerica</option>
+            </select>
+
+            <select
+              value={tipoCuenta}
+              onChange={(e) => setTipoCuenta(e.target.value)}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            >
+              <option value="">Selecciona el tipo de cuenta</option>
+              <option>Monetaria</option>
+              <option>Ahorro</option>
+            </select>
+
+            <input
+              type="text"
+              placeholder="Número de cuenta"
+              value={cuenta}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (/^\d*$/.test(v)) setCuenta(v);
+              }}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Confirmar número de cuenta"
+              value={confirmarCuenta}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (/^\d*$/.test(v)) setConfirmarCuenta(v);
+              }}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            />
 
             <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
             <input
@@ -187,7 +244,32 @@ function RetiroCuenta() {
 
             {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
-            {/* ... teléfono y confirmar ... */}
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="Número de teléfono"
+              value={telefono}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (/^\d*$/.test(v)) setTelefono(v);
+              }}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            />
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="Confirmar número de teléfono"
+              value={confirmarTelefono}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (/^\d*$/.test(v)) setConfirmarTelefono(v);
+              }}
+              className="p-3 border border-gray-300 rounded-lg"
+              required
+            />
 
             <button
               type="button"

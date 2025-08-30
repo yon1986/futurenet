@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { getSaldoReal } from '../utils/blockchain'; // 👈 tu función on-chain
 
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
@@ -10,7 +11,10 @@ function getSessionFromCookie(req: VercelRequest) {
   return verifySession(token);
 }
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
@@ -46,26 +50,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // usuario
+    // 📌 Obtener usuario (para leer walletAddress al menos)
     const { data: usuario, error: userError } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('wallet_address')
       .eq('usuario_id', usuarioID)
       .single();
 
-    if (userError || !usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-    if (usuario.saldo_wld < cantidadWLD) {
-      return res.status(400).json({ error: 'Saldo insuficiente' });
+    if (userError || !usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // actualizar saldo
-    const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
-    const { error: updateError } = await supabase
-      .from('usuarios')
-      .update({ saldo_wld: nuevoSaldo })
-      .eq('usuario_id', usuarioID);
-    if (updateError) return res.status(500).json({ error: 'Error actualizando el saldo' });
+    // ✅ Verificar saldo real desde blockchain
+    const saldoReal = await getSaldoReal(usuario.wallet_address);
+    if (saldoReal < cantidadWLD) {
+      return res.status(400).json({ error: 'Saldo insuficiente (on-chain)' });
+    }
 
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
@@ -82,13 +82,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cuenta: tipo === 'bancaria' ? cuenta || null : null,
       tipo_cuenta: tipo === 'bancaria' ? tipoCuenta || null : null,
       telefono: tipo === 'cajero' ? telefono || null : null,
-      estado: "pendiente", // 👈 clave para controlarlo luego
+      estado: "pendiente",
       created_at: new Date(),
     });
+
     if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
 
-    return res.status(200).json({ ok: true, token, nuevoSaldo });
-  } catch {
-    return res.status(500).json({ error: 'Error en el servidor' });
+    // 🚀 devolvemos éxito y el saldo real (no actualizado en Supabase)
+    return res.status(200).json({ ok: true, token, saldoReal });
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error en el servidor', details: e.message });
   }
 }

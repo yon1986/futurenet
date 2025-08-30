@@ -67,8 +67,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function cargarSaldo() {
       if (walletAddress) {
-        const saldo = await getSaldoReal(walletAddress, addDebugLog);
-        setSaldoWLD(saldo);
+        try {
+          const saldo = await getSaldoReal(walletAddress, addDebugLog);
+          setSaldoWLDState(saldo);
+          addDebugLog(`Saldo cargado desde blockchain: ${saldo} WLD`);
+        } catch (err) {
+          console.error("❌ Error obteniendo saldo real:", err);
+        }
       }
     }
     cargarSaldo();

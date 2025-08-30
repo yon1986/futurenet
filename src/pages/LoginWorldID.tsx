@@ -60,6 +60,15 @@ const LoginWorldID: React.FC = () => {
           const userWallet = wallets[0].address;
           setWalletAddress(userWallet);
           console.log("✅ Wallet Address obtenida:", userWallet);
+
+          // 🔄 Guardar wallet en Supabase
+          await fetch("/api/guardar-wallet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ walletAddress: userWallet }),
+          });
+          console.log("📌 Wallet guardada en Supabase");
         } else {
           console.warn("⚠️ No se encontraron wallets en World App");
         }

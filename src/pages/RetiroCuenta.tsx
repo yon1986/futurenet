@@ -16,6 +16,7 @@ function RetiroCuenta() {
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [cantidadWLD, setCantidadWLD] = useState<number | "">("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
+  const [tokenGenerado, setTokenGenerado] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
@@ -56,29 +57,30 @@ function RetiroCuenta() {
   };
 
   const confirmarRetiro = async () => {
-    // 🔎 Normalizamos los teléfonos
-    const tel = telefono.trim();
-    const tel2 = confirmarTelefono.trim();
-
-    if (!/^\d{8}$/.test(tel) || !/^\d{8}$/.test(tel2)) {
-      alert("El número de teléfono debe tener exactamente 8 dígitos numéricos.");
+    if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
+      alert("El número de teléfono debe tener exactamente 8 dígitos.");
       return;
     }
-    if (tel !== tel2) {
+    if (telefono !== confirmarTelefono) {
       alert("Los números de teléfono no coinciden.");
       return;
     }
-
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
     if (confirmando) return;
     setConfirmando(true);
 
     try {
-      // ⚡️ Llamada al backend (de momento debug)
+      // 1) Cobrar WLD con World App
+      const res = await cobrarWLD(Number(cantidadWLD));
+      if (res.status === "processing") {
+        // aquí podrías implementar lógica de espera si quieres
+      }
+
+      // 2) Ejecutar retiro (bancaria) en el backend
       const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
+        credentials: "include",
         body: JSON.stringify({
           cantidadWLD,
           tipo: "bancaria",
@@ -87,13 +89,28 @@ function RetiroCuenta() {
           banco,
           cuenta,
           tipoCuenta,
-          telefono: tel,
+          telefono,
         }),
       });
 
-      const text = await rx.text();
-      alert("Respuesta cruda del backend: " + text);
+      const raw = await rx.text(); // 👀 primero leemos texto crudo
+      console.log("📌 Respuesta cruda del backend:", raw);
 
+      let data: any = {};
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error("Respuesta inválida del servidor.");
+      }
+
+      if (rx.ok && data?.ok) {
+        // ✅ saldo real del backend
+        setSaldoWLD(data.saldoReal);
+        setTokenGenerado(data.token);
+        navigate("/historial", { replace: true });
+      } else {
+        alert(`❌ Error: ${data?.error || "No se pudo procesar"}`);
+      }
     } catch (e: any) {
       alert(e?.message || "Error al procesar el pago.");
     } finally {
@@ -129,6 +146,33 @@ function RetiroCuenta() {
             Total a recibir: Q{total.toFixed(2)}
           </p>
 
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Número de teléfono"
+            value={telefono}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setTelefono(v);
+            }}
+            className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
+            required
+          />
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Confirmar número de teléfono"
+            value={confirmarTelefono}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setConfirmarTelefono(v);
+            }}
+            className="p-3 border border-gray-300 rounded-lg w-full"
+            required
+          />
+
           <div className="flex justify-between mt-5">
             <button
               onClick={() => setMostrarResumen(false)}
@@ -148,6 +192,25 @@ function RetiroCuenta() {
               {confirmando ? "Procesando..." : "Confirmar"}
             </button>
           </div>
+        </div>
+      ) : tokenGenerado ? (
+        <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
+          <h2 className="text-lg font-semibold mb-4 text-green-600">
+            ✅ Retiro solicitado
+          </h2>
+          <p className="mb-4">
+            Tu token para reclamar el retiro es:{" "}
+            <strong className="text-xl">{tokenGenerado}</strong>
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.
+          </p>
+          <button
+            onClick={() => navigate("/historial")}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Ver Historial
+          </button>
         </div>
       ) : (
         <form
@@ -219,32 +282,6 @@ function RetiroCuenta() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          />
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="Número de teléfono"
-            value={telefono}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^\d*$/.test(v)) setTelefono(v);
-            }}
-            className="p-3 border border-gray-300 rounded-lg"
-            required
-          />
-          <input
-            type="tel"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="Confirmar número de teléfono"
-            value={confirmarTelefono}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (/^\d*$/.test(v)) setConfirmarTelefono(v);
-            }}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />

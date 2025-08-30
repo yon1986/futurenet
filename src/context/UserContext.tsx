@@ -67,8 +67,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function cargarSaldo() {
       if (walletAddress) {
+        addDebugLog(`Consultando saldo en blockchain para ${walletAddress}`);
         const saldo = await getSaldoReal(walletAddress, addDebugLog);
+
+        console.log("🔎 Saldo desde blockchain (Alchemy):", saldo); // 👈 LOG CLAVE
+
         setSaldoWLD(saldo);
+        addDebugLog(`Saldo actualizado en contexto: ${saldo} WLD`);
+      } else {
+        addDebugLog("⚠️ No hay walletAddress, no se puede consultar saldo");
       }
     }
     cargarSaldo();

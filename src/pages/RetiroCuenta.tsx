@@ -5,7 +5,7 @@ import { cobrarWLD } from "../utils/pay";
 
 function RetiroCuenta() {
   const navigate = useNavigate();
-  const { precioWLD } = useUser();
+  const { precioWLD, saldoWLD } = useUser(); // ✅ ahora usamos saldoWLD real de Alchemy
 
   const [nombre, setNombre] = useState("");
   const [banco, setBanco] = useState("");
@@ -75,6 +75,12 @@ function RetiroCuenta() {
     }
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) {
       setError("Debes ingresar una cantidad válida de WLD.");
+      return;
+    }
+
+    // ✅ Validar contra saldo real
+    if (cantidadWLD > saldoWLD) {
+      setError(`Saldo insuficiente. Tienes ${saldoWLD.toFixed(4)} WLD disponibles.`);
       return;
     }
 
@@ -234,6 +240,9 @@ function RetiroCuenta() {
 
             <p className="text-sm text-gray-700 mt-2">
               Precio actual de WLD: <strong>Q{precioWLD.toFixed(2)}</strong>
+            </p>
+            <p className="text-sm text-gray-700">
+              Saldo disponible: <strong>{saldoWLD.toFixed(4)} WLD</strong>
             </p>
             <p className="text-sm text-gray-700">Comisión: <strong>15%</strong></p>
             {typeof cantidadWLD === "number" && cantidadWLD > 0 && (

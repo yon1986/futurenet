@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
@@ -16,27 +15,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { token } = req.body;
 
     if (!token) {
-      return res.status(400).json({ error: "Falta el token" });
+      return res.status(400).json({ error: "Falta token" });
     }
 
-    // Buscar la transacción en Supabase
+    // 🔎 Buscar transacción
     const { data, error } = await supabase
       .from("transacciones")
-      .select(`
-        id,
-        usuario_id,
-        tipo,
-        monto_q,
-        wld_cambiados,
-        token,
-        estado,
-        created_at,
-        nombre,
-        banco,
-        cuenta,
-        tipo_cuenta,
-        telefono
-      `)
+      .select("id, estado, monto_q, usuario_id, created_at")
       .eq("token", token)
       .single();
 
@@ -44,14 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: "Token no encontrado" });
     }
 
-    return res.status(200).json({
-      ok: true,
-      transaccion: data,
-    });
-  } catch (err: any) {
-    console.error("❌ Error en /validar-token:", err);
-    return res
-      .status(500)
-      .json({ error: "Error en el servidor", details: err.message });
+    return res.status(200).json({ ok: true, ...data });
+  } catch (e: any) {
+    return res.status(500).json({ error: "Error en el servidor", details: e.message });
   }
 }

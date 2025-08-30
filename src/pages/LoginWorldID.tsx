@@ -13,8 +13,6 @@ const LoginWorldID: React.FC = () => {
   const navigate = useNavigate();
   const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
-
-  // 🔎 Nuevo estado para mostrar payload en pantalla
   const [payloadDebug, setPayloadDebug] = useState<any>(null);
 
   const appUrl = "https://futurenet.vercel.app/login-worldid";
@@ -23,7 +21,6 @@ const LoginWorldID: React.FC = () => {
     try {
       if (!MiniKit.isInstalled()) {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
         if (isMobile) {
           setEstado("error");
           setMensaje("⚠️ Esta miniapp solo puede abrirse desde World App en tu celular.");
@@ -33,6 +30,7 @@ const LoginWorldID: React.FC = () => {
         return;
       }
 
+      // 1️⃣ Verificación World ID
       const payload: VerifyCommandInput = {
         action: "futurenet-login",
         verification_level: VerificationLevel.Orb,
@@ -48,15 +46,25 @@ const LoginWorldID: React.FC = () => {
 
       const fp: any = finalPayload;
       console.log("👉 Payload recibido de World App:", fp);
-
-      // 🔎 Guardamos el payload para verlo en pantalla
       setPayloadDebug(fp);
 
-      // ✅ Guardamos usuario y wallet (si existe en payload)
+      // ✅ Guardamos usuarioID
       setUsuarioID(fp.nullifier_hash);
-      if (fp.wallet_address) {
-        setWalletAddress(fp.wallet_address);
-        console.log("✅ Wallet Address guardada:", fp.wallet_address);
+
+      // 2️⃣ Obtener wallet del usuario
+      try {
+        const wallets: any = await (MiniKit as any).commandsAsync.getWallets();
+        console.log("👉 Wallets disponibles:", wallets);
+
+        if (wallets && wallets.length > 0) {
+          const userWallet = wallets[0].address;
+          setWalletAddress(userWallet);
+          console.log("✅ Wallet Address obtenida:", userWallet);
+        } else {
+          console.warn("⚠️ No se encontraron wallets en World App");
+        }
+      } catch (err) {
+        console.error("❌ Error obteniendo wallets:", err);
       }
 
       navigate("/bienvenida");
@@ -103,7 +111,7 @@ const LoginWorldID: React.FC = () => {
           ← Volver
         </button>
 
-        {/* 🔎 DEBUG PAYLOAD */}
+        {/* 🔎 DEBUG */}
         {payloadDebug && (
           <div className="mt-6 text-left bg-gray-100 p-3 rounded-lg max-h-40 overflow-y-auto text-xs text-gray-700">
             <p className="font-semibold mb-1">🪵 Payload recibido:</p>

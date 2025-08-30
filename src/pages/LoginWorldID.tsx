@@ -51,24 +51,35 @@ const LoginWorldID: React.FC = () => {
       // ✅ Guardamos usuarioID
       setUsuarioID(fp.nullifier_hash);
 
-      // 2️⃣ Obtener wallet del usuario
+      // 2️⃣ Intentar obtener wallets del usuario
       try {
-        const wallets: any = await (MiniKit as any).commandsAsync.getWallets();
-        console.log("👉 Wallets disponibles:", wallets);
+        console.log("🔎 Intentando obtener wallets con MiniKit...");
+        const wallets: any = await (MiniKit as any).commandsAsync.getWallets?.();
 
-        if (wallets && wallets.length > 0) {
+        console.log("👉 Respuesta de getWallets:", wallets);
+
+        if (wallets && Array.isArray(wallets) && wallets.length > 0) {
           const userWallet = wallets[0].address;
           setWalletAddress(userWallet);
           console.log("✅ Wallet Address obtenida:", userWallet);
         } else {
-          console.warn("⚠️ No se encontraron wallets en World App");
+          console.warn("⚠️ No se encontraron wallets en World App, usando payload si hay");
+          if (fp?.wallet) {
+            setWalletAddress(fp.wallet);
+            console.log("✅ Wallet Address obtenida desde payload:", fp.wallet);
+          }
         }
       } catch (err) {
         console.error("❌ Error obteniendo wallets:", err);
+        if (fp?.wallet) {
+          setWalletAddress(fp.wallet);
+          console.log("✅ Wallet Address obtenida fallback desde payload:", fp.wallet);
+        }
       }
 
       navigate("/bienvenida");
     } catch (e) {
+      console.error("❌ Error general en ejecutarVerificacion:", e);
       setEstado("error");
       setMensaje("No se pudo iniciar la verificación. Reintenta.");
     }

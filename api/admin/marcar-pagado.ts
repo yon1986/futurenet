@@ -31,6 +31,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ ok: true, token, nuevoEstado: "pagado" });
   } catch (e: any) {
-    return res.status(500).json({ error: "Error en el servidor", details: e.message });
+    return res
+      .status(500)
+      .json({ error: "Error en el servidor", details: e.message });
   }
 }

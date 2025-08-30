@@ -1,6 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
 
 function Historial() {
   const navigate = useNavigate();
@@ -13,14 +19,13 @@ function Historial() {
       const res = await fetch("/api/historial", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
+        credentials: "include",
+        body: JSON.stringify({ usuarioID }),
       });
 
       const data = await res.json();
       if (res.ok && data?.transacciones) {
         setTransacciones(data.transacciones);
-      } else {
-        console.error("⚠️ Error cargando historial:", data?.error);
       }
     } catch (err) {
       console.error("❌ Error cargando historial:", err);
@@ -36,8 +41,28 @@ function Historial() {
     }
 
     fetchHistorial(); // primera carga
-    const interval = setInterval(fetchHistorial, 10000); // refrescar cada 10s
-    return () => clearInterval(interval);
+
+    // 👇 suscripción en tiempo real a cambios de estado en Supabase
+    const channel = supabase
+      .channel("transacciones-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transacciones",
+          filter: `usuario_id=eq.${usuarioID}`,
+        },
+        (payload) => {
+          console.log("Cambio detectado en transacciones:", payload);
+          fetchHistorial(); // recargar historial al instante
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [usuarioID, navigate]);
 
   if (cargando) {
@@ -79,15 +104,18 @@ function Historial() {
                 <span className="font-semibold">Recibido en quetzales:</span>{" "}
                 Q{t.monto_q?.toFixed(2)}
               </p>
-
               <p className="text-sm mb-1">
                 <span className="font-semibold">Estado:</span>{" "}
                 {t.estado === "pagado" ? "✅ Pagado" : "⏳ Pendiente"}
               </p>
-
               <p className="text-sm">
                 <span className="font-semibold">Token:</span> {t.token}
               </p>
+              {t.telefono && (
+                <p className="text-sm mb-1">
+                  <span className="font-semibold">Teléfono:</span> {t.telefono}
+                </p>
+              )}
               <p className="text-xs text-gray-500">
                 Fecha: {new Date(t.created_at).toLocaleString("es-GT")}
               </p>

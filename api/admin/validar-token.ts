@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Falta token" });
     }
 
-    // 🔎 Buscar transacción
+    // 🔎 Buscar transacción por token
     const { data, error } = await supabase
       .from("transacciones")
       .select("id, estado, monto_q, usuario_id, created_at")
@@ -31,6 +31,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ ok: true, ...data });
   } catch (e: any) {
-    return res.status(500).json({ error: "Error en el servidor", details: e.message });
+    return res
+      .status(500)
+      .json({ error: "Error en el servidor", details: e.message });
   }
 }

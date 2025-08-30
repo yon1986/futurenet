@@ -1,29 +1,40 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { VercelRequest, VercelResponse } from "@vercel/node";
+import { createClient } from "@supabase/supabase-js";
 
 // @ts-ignore
-const { verifySession } = require('./_lib/session');
+const { verifySession } = require("./_lib/session");
+
 function getSessionFromCookie(req: VercelRequest) {
-  const cookie = req.headers?.cookie || '';
+  const cookie = req.headers?.cookie || "";
   const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
   const token = m && m[1];
   return verifySession(token);
 }
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método no permitido" });
+  }
 
-  // ✅ exige sesión
+  // ✅ primero tratamos de sacar el usuario de la cookie
   const session = getSessionFromCookie(req);
-  if (!session) return res.status(401).json({ error: 'unauthorized' });
-  const usuarioID = session.sub as string;
+  const { usuarioID: bodyUsuario } = req.body || {}; // si no, viene del body
+  const usuarioID = (session?.sub as string) || bodyUsuario;
+
+  if (!usuarioID) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
 
   try {
     const { data, error } = await supabase
-      .from('transacciones')
-      .select(`
+      .from("transacciones")
+      .select(
+        `
         id,
         tipo,
         token,
@@ -35,15 +46,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cuenta,
         tipo_cuenta,
         telefono,
-        estado   -- 👈 ahora también traemos el estado
-      `)
-      .eq('usuario_id', usuarioID)
-      .order('created_at', { ascending: false });
+        estado
+      `
+      )
+      .eq("usuario_id", usuarioID)
+      .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error: 'Error consultando historial' });
+    if (error) {
+      console.error("❌ Error consultando historial:", error.message);
+      return res.status(500).json({ error: "Error consultando historial" });
+    }
 
     return res.status(200).json({ transacciones: data });
-  } catch (e) {
-    return res.status(500).json({ error: 'Error en el servidor' });
+  } catch (e: any) {
+    console.error("❌ Error en servidor:", e.message);
+    return res
+      .status(500)
+      .json({ error: "Error en el servidor", details: e.message });
   }
 }

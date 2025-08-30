@@ -4,7 +4,7 @@ import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD, precioWLD, debugLogs } = useUser();
+  const { usuarioID, debugLogs } = useUser();
 
   useEffect(() => {
     if (!usuarioID) navigate("/");
@@ -13,16 +13,9 @@ function Opciones() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-gradient-to-b from-purple-50 to-purple-200">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
-        <h1 className="text-xl font-bold mb-4 text-gray-800">
+        <h1 className="text-xl font-bold mb-6 text-gray-800">
           ¿Cómo deseas cambiar tus Worldcoin?
         </h1>
-
-        <p className="mb-1 text-gray-700">
-          Saldo actual: <strong>{saldoWLD} WLD</strong> ≈ Q{(saldoWLD * precioWLD).toFixed(2)}
-        </p>
-        <p className="text-sm text-gray-600 mb-4">
-          Precio actual del WLD: <strong>Q{precioWLD.toFixed(2)}</strong>
-        </p>
 
         <div className="flex flex-col gap-4">
           <button

@@ -4,7 +4,7 @@ import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD, precioWLD } = useUser();
+  const { usuarioID, saldoWLD, precioWLD, debugLogs } = useUser();
 
   useEffect(() => {
     if (!usuarioID) navigate("/");
@@ -48,20 +48,14 @@ function Opciones() {
           </button>
         </div>
 
-        <div className="mt-8 space-y-2">
-          <button
-            onClick={() => navigate("/como-funciona")}
-            className="text-sm text-gray-600 underline hover:text-gray-800 transition"
-          >
-            ¿Cómo funciona?
-          </button>
-          <br />
-          <button
-            onClick={() => navigate("/terminos")}
-            className="text-sm text-gray-600 underline hover:text-gray-800 transition"
-          >
-            Términos y condiciones
-          </button>
+        {/* 🔎 DEBUG MODE */}
+        <div className="mt-6 text-left bg-gray-100 p-3 rounded-lg max-h-40 overflow-y-auto text-xs text-gray-700">
+          <p className="font-semibold mb-1">🪵 Debug logs:</p>
+          {debugLogs.length === 0 ? (
+            <p className="text-gray-500">Sin logs</p>
+          ) : (
+            debugLogs.map((log, i) => <p key={i}>• {log}</p>)
+          )}
         </div>
       </div>
     </div>

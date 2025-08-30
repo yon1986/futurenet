@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getSaldoReal } from "../utils/blockchain"; // 👈 usamos la utilidad nueva
+import { getSaldoReal } from "../utils/blockchain";
 
 interface Transaccion {
   id: number;
@@ -25,6 +25,8 @@ interface UserContextType {
   precioWLD: number;
   transacciones: Transaccion[];
   setTransacciones: (t: Transaccion[]) => void;
+  debugLogs: string[];
+  addDebugLog: (msg: string) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -35,8 +37,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [saldoWLD, setSaldoWLDState] = useState<number>(0);
   const [precioWLD, setPrecioWLD] = useState<number>(8);
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  // ✅ Precio dinámico desde Binance (USD → GTQ con ajuste -0.03)
+  const addDebugLog = (msg: string) => {
+    console.log("🪵 DEBUG:", msg);
+    setDebugLogs((prev) => [...prev, msg]);
+  };
+
+  // ✅ Precio dinámico desde Binance
   useEffect(() => {
     async function fetchPrecio() {
       try {
@@ -51,24 +59,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     fetchPrecio();
-    const interval = setInterval(fetchPrecio, 60000); // cada 1 minuto
+    const interval = setInterval(fetchPrecio, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Obtener saldo real en blockchain cuando tenemos walletAddress
+  // ✅ Obtener saldo real cuando tenemos walletAddress
   useEffect(() => {
     async function cargarSaldo() {
       if (walletAddress) {
-        const saldo = await getSaldoReal(walletAddress);
+        const saldo = await getSaldoReal(walletAddress, addDebugLog);
         setSaldoWLD(saldo);
       }
     }
     cargarSaldo();
   }, [walletAddress]);
 
-  // ====================
-  // Helpers para contexto
-  // ====================
   const setUsuarioID = (id: string | null) => {
     setUsuarioIDState(id);
     if (id) {
@@ -107,6 +112,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         precioWLD,
         transacciones,
         setTransacciones,
+        debugLogs,
+        addDebugLog,
       }}
     >
       {children}

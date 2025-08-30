@@ -1,10 +1,26 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
+
+interface Transaccion {
+  id: number;
+  tipo: string;
+  token: string;
+  monto_q: number;
+  wld_cambiados: number;
+  created_at: string;
+  nombre?: string;
+  banco?: string;
+  cuenta?: string;
+  tipo_cuenta?: string;
+  telefono?: string;
+}
 
 function Historial() {
   const navigate = useNavigate();
-  const { usuarioID, transacciones } = useUser();
+  const { usuarioID } = useUser();
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
@@ -12,6 +28,38 @@ function Historial() {
       navigate("/");
     }
   }, [usuarioID, navigate]);
+
+  // 📡 Obtener historial desde el backend
+  useEffect(() => {
+    async function fetchHistorial() {
+      try {
+        const resp = await fetch("/api/historial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          setTransacciones(data.transacciones || []);
+        } else {
+          console.error("Error cargando historial:", await resp.text());
+        }
+      } catch (e) {
+        console.error("Error conectando con /api/historial:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchHistorial();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Cargando historial...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-white to-gray-100">
@@ -41,11 +89,11 @@ function Historial() {
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
-                  <strong>{t.wldCambiados}</strong> WLD
+                  <strong>{t.wld_cambiados}</strong> WLD
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
-                  Q{t.monto.toFixed(2)}
+                  Q{t.monto_q.toFixed(2)}
                 </p>
                 {t.tipo === "bancaria" && (
                   <>
@@ -54,7 +102,7 @@ function Historial() {
                     </p>
                     <p className="text-sm mb-1">
                       <span className="font-semibold">Tipo de cuenta:</span>{" "}
-                      {t.tipoCuenta}
+                      {t.tipo_cuenta}
                     </p>
                     <p className="text-sm mb-1">
                       <span className="font-semibold">Cuenta:</span> {t.cuenta}

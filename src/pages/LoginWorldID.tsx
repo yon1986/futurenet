@@ -6,7 +6,7 @@ import {
 } from "@worldcoin/minikit-js";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-import { QRCode } from "qrcode.react"; // ✅ CORREGIDO: named import
+import QRCode from "react-qr-code"; // ✅ ahora usamos react-qr-code
 
 const LoginWorldID: React.FC = () => {
   const { setUsuarioID, setWalletAddress, setSaldoWLD } = useUser();
@@ -22,10 +22,10 @@ const LoginWorldID: React.FC = () => {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {
-          // 🚀 En móvil → abrir directamente World App
+          // 📱 en móvil → abrir World App
           window.location.href = deepLink;
         } else {
-          // 💻 En escritorio → mostrar QR para escanear
+          // 💻 en escritorio → mostrar QR
           setEstado("qr");
         }
         return;
@@ -47,7 +47,7 @@ const LoginWorldID: React.FC = () => {
       const fp: any = finalPayload;
       console.log("👉 Payload recibido de World App:", fp);
 
-      // Verificación en backend
+      // Verificar en backend
       const resp = await fetch("/api/worldid/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,15 +69,14 @@ const LoginWorldID: React.FC = () => {
         return;
       }
 
-      // ✅ Guardamos usuario y wallet
+      // ✅ Guardar usuario y wallet
       setUsuarioID(fp.nullifier_hash);
-
       if (fp.wallet_address) {
         setWalletAddress(fp.wallet_address);
         console.log("✅ Wallet Address guardada:", fp.wallet_address);
       }
 
-      // 👇 Seguimos usando Supabase como respaldo de saldo (por ahora)
+      // (saldo sigue viniendo de Supabase por ahora)
       try {
         const saldoResp = await fetch("/api/saldo", {
           method: "POST",
@@ -100,7 +99,6 @@ const LoginWorldID: React.FC = () => {
 
   useEffect(() => {
     ejecutarVerificacion();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -123,10 +121,9 @@ const LoginWorldID: React.FC = () => {
         {estado === "qr" && (
           <div className="flex flex-col items-center space-y-4">
             <p className="text-gray-700 text-sm">
-              Escanea este código QR con tu celular para abrir la miniapp en
-              World App:
+              Escanea este código QR con tu celular para abrir la miniapp en World App:
             </p>
-            <QRCode value={deepLink} size={200} />
+            <QRCode value={deepLink} size={180} /> {/* ✅ ahora usando react-qr-code */}
           </div>
         )}
 

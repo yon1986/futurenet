@@ -14,7 +14,9 @@ const LoginWorldID: React.FC = () => {
   const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
 
-  // 👇 URL de tu miniapp (para QR en escritorio)
+  // 🔎 Nuevo estado para mostrar payload en pantalla
+  const [payloadDebug, setPayloadDebug] = useState<any>(null);
+
   const appUrl = "https://futurenet.vercel.app/login-worldid";
 
   const ejecutarVerificacion = async () => {
@@ -23,11 +25,9 @@ const LoginWorldID: React.FC = () => {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {
-          // En móvil fuera de World App → mostramos aviso
           setEstado("error");
           setMensaje("⚠️ Esta miniapp solo puede abrirse desde World App en tu celular.");
         } else {
-          // En escritorio → mostrar QR
           setEstado("qr");
         }
         return;
@@ -49,15 +49,15 @@ const LoginWorldID: React.FC = () => {
       const fp: any = finalPayload;
       console.log("👉 Payload recibido de World App:", fp);
 
-      // ✅ Guardamos usuario y wallet
+      // 🔎 Guardamos el payload para verlo en pantalla
+      setPayloadDebug(fp);
+
+      // ✅ Guardamos usuario y wallet (si existe en payload)
       setUsuarioID(fp.nullifier_hash);
       if (fp.wallet_address) {
         setWalletAddress(fp.wallet_address);
         console.log("✅ Wallet Address guardada:", fp.wallet_address);
       }
-
-      // ❌ Eliminado el fetch a Supabase (ya no sobreescribe saldo)
-      // El UserContext detecta el walletAddress y obtiene el saldo real desde blockchain
 
       navigate("/bienvenida");
     } catch (e) {
@@ -102,6 +102,16 @@ const LoginWorldID: React.FC = () => {
         >
           ← Volver
         </button>
+
+        {/* 🔎 DEBUG PAYLOAD */}
+        {payloadDebug && (
+          <div className="mt-6 text-left bg-gray-100 p-3 rounded-lg max-h-40 overflow-y-auto text-xs text-gray-700">
+            <p className="font-semibold mb-1">🪵 Payload recibido:</p>
+            <pre className="whitespace-pre-wrap break-words">
+              {JSON.stringify(payloadDebug, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );

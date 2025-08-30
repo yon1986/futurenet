@@ -1,11 +1,12 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
-import { getSaldoReal } from "../utils/blockchain";
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+import { getSaldoReal } from '../utils/blockchain';
+
 // @ts-ignore
-const { verifySession } = require("./_lib/session");
+const { verifySession } = require('./_lib/session');
 
 function getSessionFromCookie(req: VercelRequest) {
-  const cookie = req.headers?.cookie || "";
+  const cookie = req.headers?.cookie || '';
   const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
   const token = m && m[1];
   return verifySession(token);
@@ -17,22 +18,23 @@ const supabase = createClient(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log("⚡ [transferir] endpoint alcanzado");
-
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "Método no permitido" });
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Método no permitido' });
     }
 
+    // ✅ exige sesión World ID
     const session = getSessionFromCookie(req);
     if (!session) {
-      console.log("❌ Sesión inválida");
-      return res.status(401).json({ ok: false, error: "unauthorized" });
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    if (String(session.lvl).toLowerCase() !== 'orb') {
+      return res.status(403).json({ error: 'verification_level_not_allowed' });
     }
 
     const {
       cantidadWLD,
-      tipo,
+      tipo,        // 'bancaria' | 'cajero'
       montoQ,
       nombre,
       banco,
@@ -41,81 +43,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono,
     } = req.body || {};
 
-    console.log("📦 Body recibido:", req.body);
-
     if (
-      typeof cantidadWLD !== "number" ||
+      typeof cantidadWLD !== 'number' ||
       cantidadWLD <= 0 ||
       !tipo ||
-      typeof montoQ !== "number" ||
+      typeof montoQ !== 'number' ||
       montoQ <= 0
     ) {
-      return res.status(400).json({ ok: false, error: "Datos incompletos" });
+      return res.status(400).json({ error: 'Datos incompletos' });
     }
 
     const usuarioID = session.sub as string;
 
-    // Buscar wallet del usuario
+    // 📌 Obtener usuario (para leer walletAddress al menos)
     const { data: usuario, error: userError } = await supabase
-      .from("usuarios")
-      .select("wallet_address")
-      .eq("usuario_id", usuarioID)
+      .from('usuarios')
+      .select('wallet_address')
+      .eq('usuario_id', usuarioID)
       .single();
 
-    if (userError || !usuario?.wallet_address) {
-      console.log("❌ Usuario sin wallet registrada");
-      return res.status(404).json({ ok: false, error: "Usuario sin wallet registrada" });
+    if (userError || !usuario) {
+      console.error("❌ Usuario no encontrado en supabase:", userError);
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Verificar saldo real
+    // ✅ Verificar saldo real desde blockchain
     let saldoReal = 0;
     try {
-      saldoReal = await getSaldoReal(usuario.wallet_address, (msg: string) =>
-        console.log("🪵 blockchain:", msg)
-      );
+      saldoReal = await getSaldoReal(usuario.wallet_address);
+      console.log("💰 Saldo real blockchain:", saldoReal);
     } catch (err: any) {
-      console.error("❌ Error en getSaldoReal:", err.message);
-      return res.status(500).json({ ok: false, error: "Error consultando saldo real" });
+      console.error("❌ Error consultando saldo real:", err.message);
+      return res.status(500).json({ error: 'Error consultando saldo real' });
     }
-
-    console.log("💰 Saldo real obtenido:", saldoReal);
 
     if (saldoReal < cantidadWLD) {
-      return res.status(400).json({ ok: false, error: "Saldo insuficiente (on-chain)" });
+      return res.status(400).json({ error: 'Saldo insuficiente (on-chain)' });
     }
 
-    // Token único
+    // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Registrar transacción
-    const { error: insertError } = await supabase.from("transacciones").insert({
+    // registrar transacción (estado pendiente)
+    const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
       wld_cambiados: cantidadWLD,
       monto_q: montoQ,
       token,
-      nombre: tipo === "bancaria" ? nombre || null : null,
-      banco: tipo === "bancaria" ? banco || null : null,
-      cuenta: tipo === "bancaria" ? cuenta || null : null,
-      tipo_cuenta: tipo === "bancaria" ? tipoCuenta || null : null,
-      telefono: tipo === "cajero" ? telefono || null : null,
+      nombre: tipo === 'bancaria' ? nombre || null : null,
+      banco: tipo === 'bancaria' ? banco || null : null,
+      cuenta: tipo === 'bancaria' ? cuenta || null : null,
+      tipo_cuenta: tipo === 'bancaria' ? tipoCuenta || null : null,
+      telefono: tipo === 'cajero' ? telefono || null : null,
       estado: "pendiente",
       created_at: new Date(),
     });
 
     if (insertError) {
-      console.error("❌ Error insertando en Supabase:", insertError.message);
-      return res
-        .status(500)
-        .json({ ok: false, error: "Error registrando transacción" });
+      console.error("❌ Error insertando transacción:", insertError);
+      return res.status(500).json({ error: 'Error registrando transacción' });
     }
 
-    console.log("✅ Transacción registrada:", token);
-
+    // 🚀 devolvemos éxito y el saldo real
     return res.status(200).json({ ok: true, token, saldoReal });
+
   } catch (e: any) {
-    console.error("🔥 Error inesperado:", e);
-    // ⚠️ aquí mandamos texto simple para detectar si frontend intenta parsear vacío
-    return res.status(500).send("❌ Error en transferir: " + e.message);
+    console.error("❌ Excepción inesperada en transferir:", e.message);
+    return res.status(500).json({ error: 'Error inesperado en el servidor', details: e.message });
   }
 }

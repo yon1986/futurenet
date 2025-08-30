@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { getSaldoReal } from '../utils/blockchain'; // 👈 tu función on-chain
+import { getSaldoReal } from '../src/utils/blockchain'; // 👈 FIX: ruta correcta
 
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
@@ -106,7 +106,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const respuesta = { ok: true, token, saldoReal };
     console.log("➡️ Enviando respuesta /api/transferir:", respuesta);
 
-    // 🚀 devolvemos éxito y el saldo real (no actualizado en Supabase)
     return res.status(200).json(respuesta);
   } catch (e: any) {
     console.error("❌ Error inesperado en transferir:", e);

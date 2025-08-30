@@ -1,48 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useUser } from "../context/UserContext";
 
 function Historial() {
   const navigate = useNavigate();
-  const { usuarioID, transacciones, setTransacciones } = useUser();
-  const [cargando, setCargando] = useState(true);
+  const { usuarioID, transacciones } = useUser();
 
-  // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
-    } else {
-      // 🚀 Cargar historial desde API
-      const cargarHistorial = async () => {
-        try {
-          const res = await fetch("/api/historial", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "same-origin",
-          });
-
-          const data = await res.json();
-          if (res.ok && data.transacciones) {
-            setTransacciones(data.transacciones);
-          }
-        } catch (err) {
-          console.error("Error cargando historial:", err);
-        } finally {
-          setCargando(false);
-        }
-      };
-
-      cargarHistorial();
     }
-  }, [usuarioID, navigate, setTransacciones]);
-
-  if (cargando) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-gray-600">Cargando historial...</p>
-      </div>
-    );
-  }
+  }, [usuarioID, navigate]);
 
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-white to-gray-100">
@@ -78,18 +46,13 @@ function Historial() {
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
                   Q{t.monto_q.toFixed(2)}
                 </p>
+
+                {/* ✅ Mostrar estado correctamente */}
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Estado:</span>{" "}
-                  {t.estado === "pendiente" ? "⏳ Pendiente" : "✅ Pagado"}
-                </p>
-                <p className="text-sm mb-1">
-                  <span className="font-semibold">Fecha:</span>{" "}
-                  {t.created_at
-                    ? new Date(t.created_at).toLocaleString("es-GT", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "N/A"}
+                  {t.estado === "pagado"
+                    ? "✅ Pagado"
+                    : "⏳ Pendiente"}
                 </p>
 
                 {t.tipo === "bancaria" && (
@@ -109,12 +72,14 @@ function Historial() {
                     </p>
                   </>
                 )}
+
                 {t.tipo === "cajero" && (
                   <p className="text-sm mb-1">
                     <span className="font-semibold">Teléfono:</span>{" "}
                     {t.telefono}
                   </p>
                 )}
+
                 <p className="text-sm">
                   <span className="font-semibold">Token:</span> {t.token}
                 </p>

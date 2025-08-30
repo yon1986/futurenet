@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-/* auth por cookie */
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
 function getSessionFromCookie(req: VercelRequest) {
@@ -11,7 +10,6 @@ function getSessionFromCookie(req: VercelRequest) {
   return verifySession(token);
 }
 
-/* supabase */
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -72,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción
+    // registrar transacción (👈 estado siempre pendiente)
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -83,7 +81,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       banco: tipo === 'bancaria' ? banco || null : null,
       cuenta: tipo === 'bancaria' ? cuenta || null : null,
       tipo_cuenta: tipo === 'bancaria' ? tipoCuenta || null : null,
-      telefono: telefono || null,   // ✅ siempre guardamos el número si viene
+      telefono: tipo === 'cajero' ? telefono || null : null,
+      estado: "pendiente", // 👈 clave para controlarlo luego
       created_at: new Date(),
     });
     if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });

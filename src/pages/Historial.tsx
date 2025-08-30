@@ -21,12 +21,17 @@ function Historial() {
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
         });
+
         const data = await res.json();
+        console.log("📌 Historial recibido:", data); // 👈 debug
+
         if (res.ok && data?.transacciones) {
           setTransacciones(data.transacciones);
+        } else {
+          console.error("⚠️ Error cargando historial:", data?.error);
         }
       } catch (err) {
-        console.error("Error cargando historial:", err);
+        console.error("❌ Error cargando historial:", err);
       } finally {
         setCargando(false);
       }
@@ -75,15 +80,12 @@ function Historial() {
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
-                  Q{t.monto_q.toFixed(2)}
+                  Q{t.monto_q?.toFixed(2)}
                 </p>
 
-                {/* ✅ Estado real desde Supabase */}
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Estado:</span>{" "}
-                  {t.estado === "pagado"
-                    ? "✅ Pagado"
-                    : "⏳ Pendiente"}
+                  {t.estado === "pagado" ? "✅ Pagado" : "⏳ Pendiente"}
                 </p>
 
                 {t.tipo === "bancaria" && (
@@ -113,6 +115,9 @@ function Historial() {
 
                 <p className="text-sm">
                   <span className="font-semibold">Token:</span> {t.token}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Fecha: {new Date(t.created_at).toLocaleString("es-GT")}
                 </p>
               </div>
             ))}

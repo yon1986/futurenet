@@ -105,7 +105,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (insertError) {
       console.error("❌ Error insertando en Supabase:", insertError.message);
-      return res.status(500).json({ ok: false, error: "Error registrando transacción" });
+      return res
+        .status(500)
+        .json({ ok: false, error: "Error registrando transacción" });
     }
 
     console.log("✅ Transacción registrada:", token);
@@ -113,6 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true, token, saldoReal });
   } catch (e: any) {
     console.error("🔥 Error inesperado:", e);
-    return res.status(500).json({ ok: false, error: "Error en el servidor", details: e.message });
+    // ⚠️ aquí mandamos texto simple para detectar si frontend intenta parsear vacío
+    return res.status(500).send("❌ Error en transferir: " + e.message);
   }
 }

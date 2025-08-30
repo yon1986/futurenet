@@ -19,12 +19,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ✅ exige sesión World ID
   const session = getSessionFromCookie(req);
-  if (!session) return res.status(401).json({ error: 'unauthorized' });
+  console.log("➡️ transferir.ts session:", session);
+
+  if (!session) {
+    console.error("❌ No se encontró sesión en cookie");
+    return res.status(401).json({ error: 'unauthorized' });
+  }
   if (String(session.lvl).toLowerCase() !== 'orb') {
+    console.error("❌ Nivel de verificación no permitido:", session.lvl);
     return res.status(403).json({ error: 'verification_level_not_allowed' });
   }
 
   try {
+    console.log("➡️ transferir.ts body recibido:", req.body);
+
     const {
       cantidadWLD,
       tipo,        // 'bancaria' | 'cajero'
@@ -43,18 +51,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof montoQ !== 'number' ||
       montoQ <= 0
     ) {
+      console.error("❌ Datos incompletos:", { cantidadWLD, tipo, montoQ });
       return res.status(400).json({ error: 'Datos incompletos' });
     }
 
     const usuarioID = session.sub as string;
-
-    // ⚠️ Ya NO validamos ni descontamos saldo en Supabase.
-    // El saldo real ya fue debitado on-chain en cobrarWLD.
+    console.log("➡️ Usuario ID:", usuarioID);
 
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción en Supabase (solo historial, no saldo)
+    // registrar transacción en Supabase
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -68,11 +75,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       telefono: tipo === 'cajero' ? telefono || null : null,
       created_at: new Date(),
     });
-    if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
+
+    if (insertError) {
+      console.error("❌ Error insertando en Supabase:", insertError);
+      return res.status(500).json({ error: 'Error registrando transacción' });
+    }
+
+    console.log("✅ Transacción registrada correctamente, token:", token);
 
     return res.status(200).json({ ok: true, token });
   } catch (e) {
-    console.error("transferir error:", e);
+    console.error("❌ transferir error detail:", e);
     return res.status(500).json({ error: 'Error en el servidor' });
   }
 }

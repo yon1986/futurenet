@@ -8,36 +8,42 @@ function Historial() {
   const [transacciones, setTransacciones] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  async function fetchHistorial() {
+    try {
+      const res = await fetch("/api/historial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+      });
+
+      const data = await res.json();
+      console.log("📌 Historial recibido:", data);
+
+      if (res.ok && data?.transacciones) {
+        setTransacciones(data.transacciones);
+      } else {
+        console.error("⚠️ Error cargando historial:", data?.error);
+      }
+    } catch (err) {
+      console.error("❌ Error cargando historial:", err);
+    } finally {
+      setCargando(false);
+    }
+  }
+
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
       return;
     }
 
-    async function fetchHistorial() {
-      try {
-        const res = await fetch("/api/historial", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-        });
-
-        const data = await res.json();
-        console.log("📌 Historial recibido:", data); // 👈 debug
-
-        if (res.ok && data?.transacciones) {
-          setTransacciones(data.transacciones);
-        } else {
-          console.error("⚠️ Error cargando historial:", data?.error);
-        }
-      } catch (err) {
-        console.error("❌ Error cargando historial:", err);
-      } finally {
-        setCargando(false);
-      }
-    }
-
+    // 🚀 Primera carga
     fetchHistorial();
+
+    // 🚀 Refrescar cada 10s automáticamente
+    const interval = setInterval(fetchHistorial, 10000);
+
+    return () => clearInterval(interval);
   }, [usuarioID, navigate]);
 
   if (cargando) {

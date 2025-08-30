@@ -11,7 +11,6 @@ function RetiroCajero() {
   const [telefono, setTelefono] = useState("");
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [error, setError] = useState<string>("");
-  const [confirmando, setConfirmando] = useState(false);
 
   const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const totalSinComision = montoQ * 0.85;
@@ -39,9 +38,7 @@ function RetiroCajero() {
     }
 
     try {
-      setConfirmando(true);
-
-      // 🚀 1) Debitar con World App
+      // 🚀 Enviamos acción a World App
       const action = {
         action: "futurenet-exchange",
         value: cantidadWLD.toString(),
@@ -50,36 +47,16 @@ function RetiroCajero() {
       const result = await MiniKit.commandsAsync.sendTransaction(action);
 
       if ((result as any)?.status === "error") {
-        setError("❌ No tienes suficientes WLD en tu billetera. Revisa tu saldo en World App e intenta de nuevo.");
+        setError(
+          "❌ No tienes suficientes WLD en tu billetera. Revisa tu saldo en World App e intenta de nuevo."
+        );
         return;
       }
 
-      // 🚀 2) Registrar en backend
-      const resp = await fetch("/api/transferir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          cantidadWLD,
-          tipo: "cajero",
-          montoQ: totalARecibir,
-          telefono,
-        }),
-      });
-
-      const data = await resp.json();
-      if (!resp.ok || !data?.ok) {
-        setError(`❌ Error al registrar transacción: ${data?.error || "desconocido"}`);
-        return;
-      }
-
-      // 🚀 3) Redirigir al historial
+      // 🚀 Ya no setTransacciones manualmente
       navigate("/historial", { replace: true });
     } catch (err) {
-      console.error("Error en retiro cajero:", err);
       setError("⚠️ Hubo un problema al procesar la transacción.");
-    } finally {
-      setConfirmando(false);
     }
   };
 
@@ -88,7 +65,9 @@ function RetiroCajero() {
       <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
         <h1 className="text-xl font-bold mb-4 text-gray-800">Retiro en Cajero</h1>
 
-        <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
+        <label className="font-semibold text-sm">
+          ¿Cuántos Worldcoin deseas cambiar?
+        </label>
         <input
           type="number"
           step="0.01"
@@ -102,12 +81,17 @@ function RetiroCajero() {
         <p className="text-sm text-gray-700 mb-1">
           Precio actual de WLD: <strong>Q{precioWLD.toFixed(2)}</strong>
         </p>
-        <p className="text-sm text-gray-700 mb-1">Comisión: <strong>15%</strong></p>
+        <p className="text-sm text-gray-700 mb-1">
+          Comisión: <strong>15%</strong>
+        </p>
         {typeof cantidadWLD === "number" && cantidadWLD > 0 && (
           <>
-            <p className="text-sm text-gray-700">Total a recibir: <strong>Q{totalARecibir}</strong></p>
+            <p className="text-sm text-gray-700">
+              Total a recibir: <strong>Q{totalARecibir}</strong>
+            </p>
             <p className="text-xs text-gray-500">
-              🔒 Solo se puede retirar en múltiplos de Q50. El sobrante de Q{sobrante.toFixed(2)} quedará en tu billetera.
+              🔒 Solo se puede retirar en múltiplos de Q50. El sobrante de Q
+              {sobrante.toFixed(2)} quedará en tu billetera.
             </p>
           </>
         )}
@@ -118,7 +102,10 @@ function RetiroCajero() {
           maxLength={8}
           placeholder="Número de teléfono"
           value={telefono}
-          onChange={(e) => { const v = e.target.value; if (/^\d*$/.test(v)) setTelefono(v); }}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (/^\d*$/.test(v)) setTelefono(v);
+          }}
           className="mt-4 p-3 border border-gray-300 rounded-lg w-full"
           required
         />
@@ -128,7 +115,10 @@ function RetiroCajero() {
           maxLength={8}
           placeholder="Confirmar número de teléfono"
           value={confirmarTelefono}
-          onChange={(e) => { const v = e.target.value; if (/^\d*$/.test(v)) setConfirmarTelefono(v); }}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (/^\d*$/.test(v)) setConfirmarTelefono(v);
+          }}
           className="mt-2 p-3 border border-gray-300 rounded-lg w-full"
           required
         />
@@ -137,12 +127,9 @@ function RetiroCajero() {
 
         <button
           onClick={confirmarRetiro}
-          disabled={confirmando}
-          className={`mt-4 w-full px-6 py-3 rounded-lg text-white shadow transition ${
-            confirmando ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-          }`}
+          className="mt-4 w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
         >
-          {confirmando ? "Procesando..." : "Aprobar con World App"}
+          Aprobar con World App
         </button>
 
         <p className="mt-4 text-xs text-gray-500">

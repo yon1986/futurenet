@@ -14,7 +14,10 @@ const LoginWorldID: React.FC = () => {
   const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
 
-  // 👇 Cambia esta URL por la de tu proyecto en Vercel
+  // 👇 Deep link (para intentar abrir World App)
+  const deepLink = "worldcoin://id?action=futurenet-login";
+
+  // 👇 Fallback: URL de tu app en Vercel
   const appUrl = "https://futurenet.vercel.app/login-worldid";
 
   const ejecutarVerificacion = async () => {
@@ -23,10 +26,16 @@ const LoginWorldID: React.FC = () => {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {
-          // 📱 en móvil → abrir URL de tu miniapp directo en World App
-          window.location.href = appUrl;
+          // 📱 En móvil → intentar abrir con deep link
+          window.location.href = deepLink;
+
+          // ⏳ Si después de 1.5s no abrió nada → fallback a QR
+          setTimeout(() => {
+            setEstado("qr");
+            setMensaje("No se pudo abrir World App automáticamente. Escanea el QR:");
+          }, 1500);
         } else {
-          // 💻 en escritorio → mostrar QR para escanear
+          // 💻 En escritorio → mostrar QR directo
           setEstado("qr");
         }
         return;

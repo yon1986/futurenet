@@ -1,19 +1,48 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
-import { format } from "date-fns";
-import es from "date-fns/locale/es";
 
 function Historial() {
   const navigate = useNavigate();
-  const { usuarioID, transacciones } = useUser();
+  const { usuarioID, transacciones, setTransacciones } = useUser();
+  const [cargando, setCargando] = useState(true);
 
   // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
     if (!usuarioID) {
       navigate("/");
+    } else {
+      // 🚀 Cargar historial desde API
+      const cargarHistorial = async () => {
+        try {
+          const res = await fetch("/api/historial", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+          });
+
+          const data = await res.json();
+          if (res.ok && data.transacciones) {
+            setTransacciones(data.transacciones);
+          }
+        } catch (err) {
+          console.error("Error cargando historial:", err);
+        } finally {
+          setCargando(false);
+        }
+      };
+
+      cargarHistorial();
     }
-  }, [usuarioID, navigate]);
+  }, [usuarioID, navigate, setTransacciones]);
+
+  if (cargando) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-gray-600">Cargando historial...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-white to-gray-100">
@@ -43,11 +72,11 @@ function Historial() {
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
-                  <strong>{t.wldCambiados}</strong> WLD
+                  <strong>{t.wld_cambiados}</strong> WLD
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
-                  Q{t.monto.toFixed(2)}
+                  Q{t.monto_q.toFixed(2)}
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Estado:</span>{" "}
@@ -56,8 +85,9 @@ function Historial() {
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Fecha:</span>{" "}
                   {t.created_at
-                    ? format(new Date(t.created_at), "dd/MM/yyyy HH:mm", {
-                        locale: es,
+                    ? new Date(t.created_at).toLocaleString("es-GT", {
+                        dateStyle: "short",
+                        timeStyle: "short",
                       })
                     : "N/A"}
                 </p>
@@ -69,7 +99,7 @@ function Historial() {
                     </p>
                     <p className="text-sm mb-1">
                       <span className="font-semibold">Tipo de cuenta:</span>{" "}
-                      {t.tipoCuenta}
+                      {t.tipo_cuenta}
                     </p>
                     <p className="text-sm mb-1">
                       <span className="font-semibold">Cuenta:</span> {t.cuenta}

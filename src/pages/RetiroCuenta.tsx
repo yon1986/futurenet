@@ -56,20 +56,25 @@ function RetiroCuenta() {
   };
 
   const confirmarRetiro = async () => {
-    if (telefono.length !== 8 || confirmarTelefono.length !== 8) {
-      alert("El número de teléfono debe tener exactamente 8 dígitos.");
+    // 🔎 Normalizamos los teléfonos
+    const tel = telefono.trim();
+    const tel2 = confirmarTelefono.trim();
+
+    if (!/^\d{8}$/.test(tel) || !/^\d{8}$/.test(tel2)) {
+      alert("El número de teléfono debe tener exactamente 8 dígitos numéricos.");
       return;
     }
-    if (telefono !== confirmarTelefono) {
+    if (tel !== tel2) {
       alert("Los números de teléfono no coinciden.");
       return;
     }
+
     if (typeof cantidadWLD !== "number" || cantidadWLD <= 0) return;
     if (confirmando) return;
     setConfirmando(true);
 
     try {
-      // ⚡️ Aquí llamamos al backend
+      // ⚡️ Llamada al backend (de momento debug)
       const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,7 +87,7 @@ function RetiroCuenta() {
           banco,
           cuenta,
           tipoCuenta,
-          telefono,
+          telefono: tel,
         }),
       });
 
@@ -186,7 +191,10 @@ function RetiroCuenta() {
             type="text"
             placeholder="Número de cuenta"
             value={cuenta}
-            onChange={(e) => setCuenta(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setCuenta(v);
+            }}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />
@@ -194,7 +202,10 @@ function RetiroCuenta() {
             type="text"
             placeholder="Confirmar número de cuenta"
             value={confirmarCuenta}
-            onChange={(e) => setConfirmarCuenta(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setConfirmarCuenta(v);
+            }}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />
@@ -208,6 +219,32 @@ function RetiroCuenta() {
             placeholder="Cantidad de WLD"
             value={cantidadWLD}
             onChange={(e) => setCantidadWLD(Number(e.target.value))}
+            className="p-3 border border-gray-300 rounded-lg"
+            required
+          />
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Número de teléfono"
+            value={telefono}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setTelefono(v);
+            }}
+            className="p-3 border border-gray-300 rounded-lg"
+            required
+          />
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="Confirmar número de teléfono"
+            value={confirmarTelefono}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setConfirmarTelefono(v);
+            }}
             className="p-3 border border-gray-300 rounded-lg"
             required
           />

@@ -21,7 +21,7 @@ function Opciones() {
         />
 
         <h2 className="text-xl font-bold mb-6 text-gray-800">
-          ¿Cómo deseas cambiar tus Worldcoin?
+          ¿Cómo deseas cambiar tus Worldcoin a Quetzales?
         </h2>
 
         <div className="flex flex-col gap-4 mb-6">

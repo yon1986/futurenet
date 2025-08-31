@@ -25,7 +25,7 @@ function Bienvenida() {
         </h1>
 
         <p className="text-gray-600 mb-6">
-          El cambio más confiable y seguro de tus <strong>Worldcoin</strong>.
+          El cambio más seguro de <strong>Worldcoin</strong>. a Quetzales
         </p>
 
         <button

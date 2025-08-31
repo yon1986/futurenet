@@ -13,7 +13,7 @@ function Opciones() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-gradient-to-b from-purple-50 to-purple-200">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
-        {/* 👇 Logo desde public */}
+        {/* Logo */}
         <img
           src="/logofuturenet.jpeg"
           alt="FutureNet Company"
@@ -24,7 +24,7 @@ function Opciones() {
           ¿Cómo deseas cambiar tus Worldcoin?
         </h2>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 mb-6">
           <button
             onClick={() => navigate("/retiro-cuenta")}
             className="w-full py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition"
@@ -45,6 +45,28 @@ function Opciones() {
             className="w-full py-3 bg-gray-300 text-gray-800 rounded-xl shadow hover:bg-gray-400 transition"
           >
             Ver Historial
+          </button>
+        </div>
+
+        {/* Links de texto */}
+        <div className="flex flex-col gap-2 text-sm text-purple-700">
+          <button
+            onClick={() => navigate("/terminos")}
+            className="underline hover:text-purple-900"
+          >
+            Términos y Condiciones
+          </button>
+          <button
+            onClick={() => navigate("/como-funciona")}
+            className="underline hover:text-purple-900"
+          >
+            ¿Cómo funciona?
+          </button>
+          <button
+            onClick={() => navigate("/bienvenida")}
+            className="underline hover:text-purple-900"
+          >
+            Volver
           </button>
         </div>
       </div>

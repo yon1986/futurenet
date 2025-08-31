@@ -28,7 +28,7 @@ function findTxIdDeep(obj: any): string | undefined {
   for (const [k, v] of Object.entries(obj)) {
     const key = k.toLowerCase();
     if (typeof v === "string") {
-      if (["transaction_id", "tx_id", "transactionid", "txid"].includes(key)) {
+      if (key === "transaction_id" || key === "tx_id" || key === "transactionid" || key === "txid") {
         return v;
       }
     }
@@ -56,29 +56,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const reference: string | undefined = payload?.reference;
     if (!reference) return res.status(400).json({ error: "missing_reference" });
 
-    // Buscar el pago en Supabase
-    const { data: pay } = await supabase.from("payments").select("*").eq("reference", reference).single();
-    if (!pay) return res.status(404).json({ error: "reference_not_found" });
+    const { data: pay, error: qErr } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("reference", reference)
+      .single();
+    if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
     if (pay.status === "confirmed") {
-      return res.status(200).json({ ok: true, status: "confirmed", reference, tx_hash: pay.tx_hash });
+      return res.status(200).json({ ok: true, status: "confirmed", reference });
     }
     if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
 
-    // Guarda payload
     await supabase.from("payments").update({ raw_payload: payload }).eq("id", pay.id);
 
-    // Extraer txId
-    let txId = findTxIdDeep(payload);
-    if (!txId && payload?.finalPayload?.tx_id) {
-      txId = payload.finalPayload.tx_id;
-    }
+    const txId = findTxIdDeep(payload);
     if (txId && pay.tx_id !== txId) {
       await supabase.from("payments").update({ tx_id: txId }).eq("id", pay.id);
     }
 
-    // Marcar como processing
     if (pay.status !== "processing") {
       await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
     }
@@ -89,26 +86,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
-    // Verificar transacción en World App
     const tx = await fetchTxOnce(txId, appId, apiKey);
     const txStatus = (tx?.status || tx?.transaction_status || "").toLowerCase();
 
     if (txStatus === "failed") {
-      await supabase.from("payments").update({ status: "failed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
+      await supabase
+        .from("payments")
+        .update({ status: "failed", tx_hash: tx?.transaction_hash ?? null })
+        .eq("id", pay.id);
       return res.status(400).json({ error: "onchain_failed" });
     }
-
-    if (["mined", "confirmed", "success"].includes(txStatus)) {
-      await supabase.from("payments").update({
-        status: "confirmed",
-        tx_hash: tx?.transaction_hash ?? null,
-      }).eq("id", pay.id);
-
-      return res.status(200).json({ ok: true, status: "confirmed", reference, tx_hash: tx?.transaction_hash });
+    if (txStatus !== "mined" && txStatus !== "confirmed") {
+      return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
-    // Si aún no está confirmado → seguimos en processing
-    return res.status(200).json({ ok: true, status: "processing", reference });
+    if (tx.reference !== reference) {
+      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
+      return res.status(400).json({ error: "reference_mismatch" });
+    }
+    const merchant = (process.env.MERCHANT_WALLET || "").toLowerCase();
+    if (merchant && tx?.to && String(tx.to).toLowerCase() !== merchant) {
+      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
+      return res.status(400).json({ error: "recipient_mismatch" });
+    }
+
+    // Confirmar en tabla payments
+    await supabase
+      .from("payments")
+      .update({
+        status: "confirmed",
+        tx_hash: tx?.transaction_hash ?? null,
+      })
+      .eq("id", pay.id);
+
+    // ⚡️ Nuevo: notificar a /api/transferir para que guarde la tx en historial
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/transferir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cantidadWLD: pay.amount_wld,
+          tipo: pay.tipo || "bancaria", // fallback
+          montoQ: pay.monto_q || 0,
+          nombre: pay.nombre,
+          banco: pay.banco,
+          cuenta: pay.cuenta,
+          tipoCuenta: pay.tipo_cuenta,
+          telefono: pay.telefono,
+          txHash: tx?.transaction_hash ?? null, // 👈 enviamos hash
+        }),
+      });
+    } catch (err) {
+      console.error("⚠️ Error notificando a /api/transferir:", err);
+    }
+
+    return res.status(200).json({ ok: true, status: "confirmed", reference, tx });
   } catch (e: any) {
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }

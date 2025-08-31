@@ -15,7 +15,7 @@ function Opciones() {
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
         {/* 👇 Logo desde /public */}
         <img
-          src="/logo-futurenet.jpeg"
+          src="/logo-futurenet.png"
           alt="FutureNet Company"
           className="mx-auto mb-6 w-32 h-32 object-contain"
         />

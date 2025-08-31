@@ -62,6 +62,21 @@ function Historial() {
                     : "N/A"}
                 </p>
 
+                {/* 🔗 Mostrar hash si existe */}
+                {t.txHash && (
+                  <p className="text-sm mb-1 break-words">
+                    <span className="font-semibold">Tx Hash:</span>{" "}
+                    <a
+                      href={`https://optimistic.etherscan.io/tx/${t.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {t.txHash.slice(0, 10)}...{t.txHash.slice(-8)}
+                    </a>
+                  </p>
+                )}
+
                 {t.tipo === "bancaria" && (
                   <>
                     <p className="text-sm mb-1">

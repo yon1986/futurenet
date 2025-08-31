@@ -30,10 +30,3 @@
     "vite": "^4.5.0"
   }
 }
-{
-  "name": "futurenet",
-  "version": "1.0.0",
-  ...
-  "private": true,
-  "vercelTrigger": "2025-08-30"
-}

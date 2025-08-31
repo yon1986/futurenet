@@ -42,7 +42,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const to = (process.env.MERCHANT_WALLET || "").trim();
     if (!to) return res.status(500).json({ error: "missing_merchant_wallet" });
 
-    return res.status(200).json({ ok: true, reference, to, network: "worldchain" });
+    const appId = process.env.WORLD_APP_ID;
+    if (!appId) return res.status(500).json({ error: "missing_app_id" });
+
+    return res.status(200).json({
+      ok: true,
+      reference,
+      to,
+      network: "worldchain",
+      appId // 👈 se devuelve también para que quede claro
+    });
   } catch (e: any) {
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }

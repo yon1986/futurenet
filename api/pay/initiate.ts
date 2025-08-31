@@ -25,9 +25,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
+    // ✅ Asegurar que el usuario exista en la tabla `usuarios`
+    let { data: usuario, error: userError } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("usuario_id", usuarioID)
+      .single();
+
+    if (userError || !usuario) {
+      const { error: insertUserError } = await supabase
+        .from("usuarios")
+        .insert({ usuario_id: usuarioID, saldo_wld: 0 });
+
+      if (insertUserError) {
+        console.error("❌ Error creando usuario:", insertUserError);
+        return res.status(500).json({ error: "db_user_insert_error", detail: insertUserError });
+      }
+    }
+
+    // 🔑 Generar referencia única
     const reference = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // 🔥 Insert solo con columnas válidas en tu tabla
+    // 🔥 Insert en payments (usuario_id ya garantizado)
     const { error: insErr } = await supabase.from("payments").insert({
       usuario_id: usuarioID,
       reference,
@@ -36,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     if (insErr) {
       console.error("❌ Error insertando en payments:", insErr);
-      return res.status(500).json({ error: "db_insert_error" });
+      return res.status(500).json({ error: "db_insert_error", detail: insErr });
     }
 
     const to = (process.env.MERCHANT_WALLET || "").trim();
@@ -50,9 +69,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       reference,
       to,
       network: "worldchain",
-      appId // 👈 se devuelve también para que quede claro
+      appId
     });
   } catch (e: any) {
+    console.error("🔥 Error en /api/pay/initiate:", e);
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }
 }

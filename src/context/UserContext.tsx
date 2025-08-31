@@ -25,8 +25,6 @@ interface UserContextType {
   precioWLD: number;
   transacciones: Transaccion[];
   setTransacciones: (t: Transaccion[]) => void;
-  debugLogs: string[];
-  addDebugLog: (msg: string) => void;
   lastPayload: any;
   setLastPayload: (p: any) => void;
 }
@@ -39,13 +37,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [saldoWLD, setSaldoWLDState] = useState<number>(0);
   const [precioWLD, setPrecioWLD] = useState<number>(8);
   const [transacciones, setTransaccionesState] = useState<Transaccion[]>([]);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [lastPayload, setLastPayload] = useState<any>(null);
-
-  const addDebugLog = (msg: string) => {
-    console.log("🪵 DEBUG:", msg);
-    setDebugLogs((prev) => [...prev, msg]);
-  };
 
   // ✅ Precio dinámico desde Binance
   useEffect(() => {
@@ -57,7 +49,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const precioGTQ = precioUSD * 7.69 - 0.03;
         setPrecioWLD(precioGTQ);
       } catch (err) {
-        console.error("Error obteniendo precio WLD:", err);
+        // error silencioso
       }
     }
 
@@ -70,20 +62,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function cargarSaldo() {
       if (walletAddress) {
-        addDebugLog(`📌 Iniciando consulta de saldo para wallet: ${walletAddress}`);
-        const saldo = await getSaldoReal(walletAddress, addDebugLog);
-        console.log("🔎 Saldo desde blockchain (Alchemy):", saldo);
+        const saldo = await getSaldoReal(walletAddress, () => {});
         setSaldoWLD(saldo);
-        addDebugLog(`✅ Saldo actualizado en contexto: ${saldo} WLD`);
-      } else {
-        addDebugLog("⚠️ No hay walletAddress → no se consulta saldo");
       }
     }
     cargarSaldo();
   }, [walletAddress]);
 
   const setUsuarioID = (id: string | null) => {
-    console.log("📌 setUsuarioID llamado con:", id);
     setUsuarioIDState(id);
     if (id) {
       localStorage.setItem("usuarioID", id);
@@ -93,19 +79,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   const setWalletAddress = (addr: string | null) => {
-    console.log("📌 setWalletAddress llamado con:", addr);
     setWalletAddressState(addr);
     if (addr) {
       localStorage.setItem("walletAddress", addr);
-      console.log("💾 walletAddress guardada en localStorage:", addr);
     } else {
       localStorage.removeItem("walletAddress");
-      console.log("💾 walletAddress eliminada de localStorage");
     }
   };
 
   const setSaldoWLD = (saldo: number) => {
-    console.log("📌 setSaldoWLD llamado con:", saldo);
     setSaldoWLDState(saldo);
   };
 
@@ -125,8 +107,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
         precioWLD,
         transacciones,
         setTransacciones,
-        debugLogs,
-        addDebugLog,
         lastPayload,
         setLastPayload,
       }}

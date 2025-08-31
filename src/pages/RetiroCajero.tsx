@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useUser } from "../context/UserContext";
-import { MiniKit } from "@worldcoin/minikit-js";
+import { cobrarWLD } from "../utils/pay";
 
 function RetiroCajero() {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ function RetiroCajero() {
   const [telefono, setTelefono] = useState("");
   const [confirmarTelefono, setConfirmarTelefono] = useState("");
   const [error, setError] = useState<string>("");
-  const [confirmando, setConfirmando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   const montoQ = typeof cantidadWLD === "number" ? cantidadWLD * precioWLD : 0;
   const totalSinComision = montoQ * 0.85;
@@ -39,23 +39,18 @@ function RetiroCajero() {
     }
 
     try {
-      setConfirmando(true);
+      setProcesando(true);
 
-      // 🚀 1) Debitar con World App
-      const action = {
-        action: "futurenet-exchange",
-        value: cantidadWLD.toString(),
-      };
+      // 🚀 1) Cobrar WLD igual que en RetiroCuenta
+      const res = await cobrarWLD(Number(cantidadWLD));
+      console.log("👉 Resultado cobrarWLD:", res);
 
-      const result = await MiniKit.commandsAsync.sendTransaction(action);
-
-      if ((result as any)?.status === "error") {
-        setError("❌ No tienes suficientes WLD en tu billetera. Revisa tu saldo en World App e intenta de nuevo.");
-        return;
+      if (res.status === "processing") {
+        // el backend confirmará más tarde
       }
 
-      // 🚀 2) Registrar en backend
-      const resp = await fetch("/api/transferir", {
+      // 🚀 2) Registrar retiro en backend
+      const rx = await fetch("/api/transferir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -67,19 +62,26 @@ function RetiroCajero() {
         }),
       });
 
-      const data = await resp.json();
-      if (!resp.ok || !data?.ok) {
-        setError(`❌ Error al registrar transacción: ${data?.error || "desconocido"}`);
+      const data = await rx.json().catch(() => ({}));
+      console.log("👉 Respuesta /api/transferir:", data);
+
+      if (rx.status === 401) {
+        setError("Tu sesión expiró. Inicia nuevamente con World ID.");
+        navigate("/login-worldid");
         return;
       }
 
-      // 🚀 3) Redirigir al historial
-      navigate("/historial", { replace: true });
-    } catch (err) {
-      console.error("Error en retiro cajero:", err);
-      setError("⚠️ Hubo un problema al procesar la transacción.");
+      if (rx.ok && data?.ok) {
+        // 🚀 3) Redirigir al historial
+        navigate("/historial", { replace: true });
+      } else {
+        setError(`❌ Error: ${data?.error || "No se pudo procesar"}`);
+      }
+    } catch (e: any) {
+      console.error("Error en retiro cajero:", e);
+      setError(e?.message || "⚠️ Hubo un problema al procesar la transacción.");
     } finally {
-      setConfirmando(false);
+      setProcesando(false);
     }
   };
 
@@ -137,12 +139,12 @@ function RetiroCajero() {
 
         <button
           onClick={confirmarRetiro}
-          disabled={confirmando}
+          disabled={procesando}
           className={`mt-4 w-full px-6 py-3 rounded-lg text-white shadow transition ${
-            confirmando ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+            procesando ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
           }`}
         >
-          {confirmando ? "Procesando..." : "Aprobar con World App"}
+          {procesando ? "Procesando..." : "Aprobar con World App"}
         </button>
 
         <p className="mt-4 text-xs text-gray-500">

@@ -1,4 +1,3 @@
-// src/pages/Terminos.tsx
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -19,11 +18,18 @@ const Terminos: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="bg-white rounded-xl shadow-md max-w-lg w-full p-6 text-gray-800">
-        <h2 className="text-2xl font-bold mb-4 text-center text-purple-800">
+        {/* 👇 Logo de Futurenet */}
+        <img
+          src="/logofuturenet.jpeg"
+          alt="FutureNet Company"
+          className="mx-auto mb-4 w-24 h-24 object-contain"
+        />
+
+        <h2 className="text-xl font-bold mb-4 text-center text-purple-800">
           Términos y Condiciones
         </h2>
 
-        <div className="text-sm space-y-3 text-justify">
+        <div className="text-xs space-y-3 text-justify">
           <p>
             Al utilizar esta aplicación, aceptas que los cambios de Worldcoin por moneda local se
             realizan a través de un proceso manual, donde un operador verifica y ejecuta el cambio
@@ -58,7 +64,11 @@ const Terminos: React.FC = () => {
 
         <button
           onClick={handleClick}
-          className="mt-6 w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          className={`mt-6 w-full rounded-lg shadow-lg transition ${
+            desdeInicio
+              ? "py-4 text-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+              : "py-3 text-base bg-purple-600 hover:bg-purple-700 text-white"
+          }`}
         >
           {desdeInicio ? "Aceptar y continuar" : "← Volver"}
         </button>

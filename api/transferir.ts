@@ -26,9 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
   if (String(session.lvl).toLowerCase() !== "orb") {
-    return res
-      .status(403)
-      .json({ error: "verification_level_not_allowed" });
+    return res.status(403).json({ error: "verification_level_not_allowed" });
   }
 
   try {
@@ -76,36 +74,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       usuario = { usuario_id: usuarioID, saldo_wld: 0 };
     }
 
-    // 🔥 IMPORTANTE: ya NO restamos saldo aquí
-    // porque World App ya debitó al usuario en blockchain.
-    // Solo registramos la transacción para historial.
-
     // token único
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción
+    // registrar transacción (⚠️ quitamos created_at, DB ya tiene default)
     const { error: insertError } = await supabase.from("transacciones").insert({
       usuario_id: usuarioID,
       tipo,
-      wld_cambiados: cantidadWLD,
-      monto_q: montoQ,
+      wld_cambiados: Number(cantidadWLD),
+      monto_q: Number(montoQ),
       token,
       nombre: tipo === "bancaria" ? nombre || null : null,
       banco: tipo === "bancaria" ? banco || null : null,
       cuenta: tipo === "bancaria" ? cuenta || null : null,
       tipo_cuenta: tipo === "bancaria" ? tipoCuenta || null : null,
-      telefono: telefono || null,
-      created_at: new Date(),
+      telefono: telefono || null
     });
 
     if (insertError) {
       console.error("❌ Error registrando transacción:", insertError);
-      return res.status(500).json({ error: "Error registrando transacción" });
+      return res.status(500).json({ error: "Error registrando transacción", detail: insertError });
     }
 
     return res.status(200).json({ ok: true, token });
-  } catch (err) {
+  } catch (err: any) {
     console.error("🔥 Error en /transferir:", err);
-    return res.status(500).json({ error: "Error en el servidor" });
+    return res.status(500).json({ error: "Error en el servidor", detail: String(err.message || err) });
   }
 }

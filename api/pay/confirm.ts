@@ -15,22 +15,12 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KE
 
 async function fetchTxOnce(txId: string, appId: string, apiKey: string) {
   const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}&type=payment`;
-  console.log("🌐 Consultando portal:", url);
-
-  const resp = await fetch(url, { 
-    method: "GET", 
-    headers: { Authorization: `Bearer ${apiKey}` } 
-  });
-
+  const resp = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${apiKey}` } });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    console.error("❌ Error portal:", resp.status, text);
     throw new Error(`portal_http_${resp.status}:${text}`);
   }
-
-  const data = await resp.json();
-  console.log("✅ Respuesta portal:", JSON.stringify(data, null, 2));
-  return data;
+  return resp.json();
 }
 
 // Busca transaction_id/tx_id en cualquier nivel del objeto
@@ -64,8 +54,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { payload } = (req.body || {}) as { payload?: any };
-    console.log("📩 Payload recibido:", JSON.stringify(payload, null, 2));
-
     const reference: string | undefined = payload?.reference;
     if (!reference) return res.status(400).json({ error: "missing_reference" });
 
@@ -75,16 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select("*")
       .eq("reference", reference)
       .single();
-    if (qErr || !pay) {
-      console.error("❌ Pago no encontrado en DB:", qErr);
-      return res.status(404).json({ error: "reference_not_found" });
-    }
-    if (pay.usuario_id !== usuarioID) {
-      console.error("⚠️ Usuario no coincide:", usuarioID, pay.usuario_id);
-      return res.status(403).json({ error: "forbidden" });
-    }
-
-    console.log("ℹ️ Estado actual en DB:", pay.status);
+    if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
+    if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
     if (pay.status === "confirmed") {
       return res.status(200).json({ ok: true, status: "confirmed", reference });
@@ -96,8 +76,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Extraer txId
     const txId = findTxIdDeep(payload);
-    console.log("🔎 txId extraído:", txId);
-
     if (txId && pay.tx_id !== txId) {
       await supabase.from("payments").update({ tx_id: txId }).eq("id", pay.id);
     }
@@ -108,18 +86,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Verificar en portal de World App
-    const appId = process.env.APP_ID;
+    const appId = process.env.WORLD_APP_ID; // 👈 usamos WORLD_APP_ID
     const apiKey = process.env.DEV_PORTAL_API_KEY;
-    console.log("🔑 APP_ID presente?", !!appId, "API_KEY presente?", !!apiKey);
-
     if (!appId || !apiKey || !txId) {
-      console.warn("⚠️ Falta appId, apiKey o txId");
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
     const tx = await fetchTxOnce(txId, appId, apiKey);
     const txStatus = (tx?.status || tx?.transaction_status || "").toLowerCase();
-    console.log("📊 Estado devuelto por portal:", txStatus);
 
     if (txStatus === "failed") {
       await supabase
@@ -132,7 +106,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, status: "processing", reference });
     }
 
-    // Confirmar transacción en Supabase
+    // Validaciones finales
+    if (tx.reference !== reference) {
+      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
+      return res.status(400).json({ error: "reference_mismatch" });
+    }
+    const merchant = (process.env.MERCHANT_WALLET || "").toLowerCase();
+    if (merchant && tx?.to && String(tx.to).toLowerCase() !== merchant) {
+      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
+      return res.status(400).json({ error: "recipient_mismatch" });
+    }
+
+    // Confirmar transacción en Supabase (solo historial, sin tocar saldo_wld)
     await supabase
       .from("payments")
       .update({
@@ -141,11 +126,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       .eq("id", pay.id);
 
-    console.log("✅ Transacción confirmada en DB con hash:", tx?.transaction_hash);
-
     return res.status(200).json({ ok: true, status: "confirmed", reference, tx });
   } catch (e: any) {
-    console.error("🔥 Error en /pay/confirm:", e);
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }
 }

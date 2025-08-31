@@ -18,6 +18,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
+  if (String(session.lvl).toLowerCase() !== "orb") {
+    return res.status(403).json({ error: "verification_level_not_allowed" });
+  }
 
   try {
     const { amountWLD } = (req.body || {}) as { amountWLD?: number };
@@ -25,20 +28,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
+    // referencia única
     const reference = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-    const { error: insErr } = await supabase.from("payments").insert({
-      usuario_id: usuarioID,
-      reference,
-      amount_wld: amountWLD,
-      status: "pending",
-    });
-    if (insErr) return res.status(500).json({ error: "db_insert_error" });
 
     const to = (process.env.MERCHANT_WALLET || "").trim();
     if (!to) return res.status(500).json({ error: "missing_merchant_wallet" });
 
     const network = process.env.PAY_NETWORK || "worldchain";
+
+    // guardar en Supabase
+    const { error: insErr } = await supabase.from("payments").insert({
+      usuario_id: usuarioID,
+      reference,
+      amount_wld: amountWLD,
+      status: "pending",
+      to,
+      network,
+      created_at: new Date(),
+    });
+    if (insErr) return res.status(500).json({ error: "db_insert_error" });
 
     return res.status(200).json({ ok: true, reference, to, network });
   } catch (e: any) {

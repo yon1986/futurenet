@@ -46,6 +46,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: "unauthorized" });
+  if (String(session.lvl).toLowerCase() !== "orb") {
+    return res.status(403).json({ error: "verification_level_not_allowed" });
+  }
 
   const usuarioID = session.sub as string;
 
@@ -55,7 +58,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!reference) return res.status(400).json({ error: "missing_reference" });
 
     // Buscar el pago en Supabase
-    const { data: pay, error: qErr } = await supabase.from("payments").select("*").eq("reference", reference).single();
+    const { data: pay, error: qErr } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("reference", reference)
+      .single();
     if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
@@ -89,7 +96,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const txStatus = (tx?.status || tx?.transaction_status || "").toLowerCase();
 
     if (txStatus === "failed") {
-      await supabase.from("payments").update({ status: "failed", tx_hash: tx?.transaction_hash ?? null }).eq("id", pay.id);
+      await supabase
+        .from("payments")
+        .update({ status: "failed", tx_hash: tx?.transaction_hash ?? null })
+        .eq("id", pay.id);
       return res.status(400).json({ error: "onchain_failed" });
     }
     if (txStatus !== "mined" && txStatus !== "confirmed") {
@@ -108,10 +118,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Confirmar transacción en Supabase (solo historial, sin tocar saldo_wld)
-    await supabase.from("payments").update({
-      status: "confirmed",
-      tx_hash: tx?.transaction_hash ?? null
-    }).eq("id", pay.id);
+    await supabase
+      .from("payments")
+      .update({
+        status: "confirmed",
+        tx_hash: tx?.transaction_hash ?? null,
+      })
+      .eq("id", pay.id);
 
     return res.status(200).json({ ok: true, status: "confirmed", reference, tx });
   } catch (e: any) {

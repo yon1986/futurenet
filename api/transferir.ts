@@ -1,9 +1,10 @@
+// api/transferir.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-/* auth por cookie */
 // @ts-ignore
 const { verifySession } = require('./_lib/session');
+
 function getSessionFromCookie(req: VercelRequest) {
   const cookie = req.headers?.cookie || '';
   const m = cookie.match(/(?:^|;\s*)fn_session=([^;]+)/);
@@ -11,7 +12,6 @@ function getSessionFromCookie(req: VercelRequest) {
   return verifySession(token);
 }
 
-/* supabase */
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -48,31 +48,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // usuario
-    const { data: usuario, error: userError } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('usuario_id', usuarioID)
-      .single();
+    // ✅ Ya no verificamos saldo en supabase ni actualizamos usuarios
 
-    if (userError || !usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-    if (usuario.saldo_wld < cantidadWLD) {
-      return res.status(400).json({ error: 'Saldo insuficiente' });
-    }
-
-    // actualizar saldo
-    const nuevoSaldo = usuario.saldo_wld - cantidadWLD;
-    const { error: updateError } = await supabase
-      .from('usuarios')
-      .update({ saldo_wld: nuevoSaldo })
-      .eq('usuario_id', usuarioID);
-    if (updateError) return res.status(500).json({ error: 'Error actualizando el saldo' });
-
-    // token único
+    // token único para reclamar retiro
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción
+    // registrar transacción solo en historial
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,
@@ -83,13 +64,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       banco: tipo === 'bancaria' ? banco || null : null,
       cuenta: tipo === 'bancaria' ? cuenta || null : null,
       tipo_cuenta: tipo === 'bancaria' ? tipoCuenta || null : null,
-      telefono: telefono || null,   // ✅ siempre guardamos el número si viene
+      telefono: telefono || null,
       created_at: new Date(),
     });
-    if (insertError) return res.status(500).json({ error: 'Error registrando transacción' });
+    if (insertError) {
+      console.error("❌ Error registrando transacción:", insertError);
+      return res.status(500).json({ error: 'Error registrando transacción' });
+    }
 
-    return res.status(200).json({ ok: true, token, nuevoSaldo });
-  } catch {
-    return res.status(500).json({ error: 'Error en el servidor' });
+    return res.status(200).json({ ok: true, token });
+  } catch (e: any) {
+    console.error("❌ Error en /transferir:", e);
+    return res.status(500).json({ error: 'Error en el servidor', detail: String(e?.message || e) });
   }
 }

@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useUser } from "../context/UserContext";
-import logo from "../assets/logo-futurenet.jpeg"; // 👈 Ajusta la ruta si tu logo está en otra carpeta
 
 function Opciones() {
   const navigate = useNavigate();
@@ -14,9 +13,9 @@ function Opciones() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-gradient-to-b from-purple-50 to-purple-200">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
-        {/* 👇 Logo arriba */}
+        {/* 👇 Logo desde /public */}
         <img
-          src={logo}
+          src="/logo-futurenet.jpeg"
           alt="FutureNet Company"
           className="mx-auto mb-6 w-32 h-32 object-contain"
         />

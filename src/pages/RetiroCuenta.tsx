@@ -42,7 +42,8 @@ function RetiroCuenta() {
       }
 
       if (!c.ok) {
-        if (confirm?.error === "onchain_failed") throw new Error("La transacción en la red falló.");
+        if (confirm?.error === "onchain_failed")
+          throw new Error("La transacción en la red falló.");
         throw new Error(confirm?.error || "Error confirmando el pago.");
       }
 
@@ -92,6 +93,7 @@ function RetiroCuenta() {
 
       // 1️⃣ Cobrar WLD directamente
       const res = await cobrarWLD(Number(cantidadWLD));
+      console.log("👉 Resultado cobrarWLD:", res);
       if (res.status === "processing") {
         await esperarConfirmacion(res.reference);
       }
@@ -113,13 +115,15 @@ function RetiroCuenta() {
         }),
       });
 
+      const data = await rx.json().catch(() => ({}));
+      console.log("👉 Respuesta /api/transferir:", data);
+
       if (rx.status === 401) {
         setError("Tu sesión expiró. Inicia nuevamente con World ID.");
         navigate("/login-worldid");
         return;
       }
 
-      const data = await rx.json().catch(() => ({}));
       if (rx.ok && data?.ok) {
         setTokenGenerado(data.token);
       } else {
@@ -140,17 +144,22 @@ function RetiroCuenta() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-gradient-to-b from-purple-50 to-purple-100">
       <div className="bg-white shadow-xl rounded-2xl p-6 w-full max-w-sm text-center">
-        <h1 className="text-xl font-semibold mb-4 text-gray-800">Retiro a Cuenta Bancaria</h1>
+        <h1 className="text-xl font-semibold mb-4 text-gray-800">
+          Retiro a Cuenta Bancaria
+        </h1>
 
         {tokenGenerado ? (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-green-600">✅ Retiro solicitado</h2>
+            <h2 className="text-lg font-semibold mb-4 text-green-600">
+              ✅ Retiro solicitado
+            </h2>
             <p className="mb-4">
               Tu token para reclamar el retiro es:{" "}
               <strong className="text-xl">{tokenGenerado}</strong>
             </p>
             <p className="text-sm text-gray-600 mb-4">
-              Envía este token por WhatsApp al <strong>35950933</strong> para reclamar tu pago.
+              Envía este token por WhatsApp al <strong>35950933</strong> para
+              reclamar tu pago.
             </p>
             <button
               onClick={() => navigate("/historial")}
@@ -220,7 +229,9 @@ function RetiroCuenta() {
               required
             />
 
-            <label className="font-semibold text-sm">¿Cuántos Worldcoin deseas cambiar?</label>
+            <label className="font-semibold text-sm">
+              ¿Cuántos Worldcoin deseas cambiar?
+            </label>
             <input
               type="number"
               step="0.01"
@@ -276,7 +287,9 @@ function RetiroCuenta() {
               onClick={confirmarRetiro}
               disabled={procesando}
               className={`w-full mt-3 px-6 py-3 rounded-lg text-white shadow transition ${
-                procesando ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"
+                procesando
+                  ? "bg-purple-400 cursor-not-allowed"
+                  : "bg-purple-600 hover:bg-purple-700"
               }`}
             >
               {procesando ? "Procesando..." : "Confirmar Retiro"}

@@ -144,7 +144,7 @@ function RetiroCajero() {
             procesando ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
           }`}
         >
-          {procesando ? "Procesando..." : "Aprobar con World App"}
+          {procesando ? "Procesando..." : "Confirmar Retiro"}
         </button>
 
         <p className="mt-4 text-xs text-gray-500">

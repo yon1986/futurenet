@@ -4,7 +4,7 @@ import { useUser } from "../context/UserContext";
 
 function Opciones() {
   const navigate = useNavigate();
-  const { usuarioID, saldoWLD, debugLogs, walletAddress, lastPayload } = useUser();
+  const { usuarioID } = useUser();
 
   useEffect(() => {
     if (!usuarioID) navigate("/");
@@ -39,31 +39,6 @@ function Opciones() {
           >
             Ver Historial
           </button>
-        </div>
-
-        {/* 🔎 DEBUG VISUAL */}
-        <div className="mt-4 text-left bg-yellow-100 p-3 rounded-lg text-xs text-gray-800">
-          <p className="font-semibold">DEBUG VISUAL</p>
-          <p>Wallet usada: <strong>{walletAddress || "No detectada"}</strong></p>
-          <p>Saldo leído en blockchain: <strong>{saldoWLD} WLD</strong></p>
-        </div>
-
-        {/* 🔎 DEBUG PAYLOAD */}
-        <div className="mt-4 text-left bg-blue-100 p-3 rounded-lg text-xs text-gray-800">
-          <p className="font-semibold">DEBUG PAYLOAD (último login)</p>
-          <pre className="whitespace-pre-wrap break-words">
-            {JSON.stringify(lastPayload, null, 2)}
-          </pre>
-        </div>
-
-        {/* 🔎 DEBUG MODE */}
-        <div className="mt-6 text-left bg-gray-100 p-3 rounded-lg max-h-40 overflow-y-auto text-xs text-gray-700">
-          <p className="font-semibold mb-1">🪵 Debug logs:</p>
-          {debugLogs.length === 0 ? (
-            <p className="text-gray-500">Sin logs</p>
-          ) : (
-            debugLogs.map((log, i) => <p key={i}>• {log}</p>)
-          )}
         </div>
       </div>
     </div>

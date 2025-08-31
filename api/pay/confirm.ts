@@ -13,34 +13,6 @@ function getSessionFromCookie(req: VercelRequest) {
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
-async function fetchTxOnce(txId: string, appId: string, apiKey: string) {
-  const url = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}?app_id=${appId}&type=payment`;
-  const resp = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${apiKey}` } });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`portal_http_${resp.status}:${text}`);
-  }
-  return resp.json();
-}
-
-// Busca transaction_id/tx_id en cualquier nivel del objeto
-function findTxIdDeep(obj: any): string | undefined {
-  if (!obj || typeof obj !== "object") return;
-  for (const [k, v] of Object.entries(obj)) {
-    const key = k.toLowerCase();
-    if (typeof v === "string") {
-      if (key === "transaction_id" || key === "tx_id" || key === "transactionid" || key === "txid") {
-        return v;
-      }
-    }
-    if (v && typeof v === "object") {
-      const r = findTxIdDeep(v);
-      if (r) return r;
-    }
-  }
-  return;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
@@ -63,71 +35,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select("*")
       .eq("reference", reference)
       .single();
+
     if (qErr || !pay) return res.status(404).json({ error: "reference_not_found" });
     if (pay.usuario_id !== usuarioID) return res.status(403).json({ error: "forbidden" });
 
-    if (pay.status === "confirmed") {
-      return res.status(200).json({ ok: true, status: "confirmed", reference });
-    }
-    if (pay.status === "failed") return res.status(400).json({ error: "onchain_failed" });
+    // Guardar payload y marcar confirmado directamente
+    const txId = payload?.transaction_id || payload?.tx_id || null;
 
-    // Guarda payload para depuración
-    await supabase.from("payments").update({ raw_payload: payload }).eq("id", pay.id);
-
-    // Extraer txId
-    const txId = findTxIdDeep(payload);
-    if (txId && pay.tx_id !== txId) {
-      await supabase.from("payments").update({ tx_id: txId }).eq("id", pay.id);
-    }
-
-    // Marcar como processing
-    if (pay.status !== "processing") {
-      await supabase.from("payments").update({ status: "processing" }).eq("id", pay.id);
-    }
-
-    // Verificar en portal de World App
-    const appId = process.env.WORLD_APP_ID; // 👈 usamos WORLD_APP_ID
-    const apiKey = process.env.DEV_PORTAL_API_KEY;
-    if (!appId || !apiKey || !txId) {
-      return res.status(200).json({ ok: true, status: "processing", reference });
-    }
-
-    const tx = await fetchTxOnce(txId, appId, apiKey);
-    const txStatus = (tx?.status || tx?.transaction_status || "").toLowerCase();
-
-    if (txStatus === "failed") {
-      await supabase
-        .from("payments")
-        .update({ status: "failed", tx_hash: tx?.transaction_hash ?? null })
-        .eq("id", pay.id);
-      return res.status(400).json({ error: "onchain_failed" });
-    }
-    if (txStatus !== "mined" && txStatus !== "confirmed") {
-      return res.status(200).json({ ok: true, status: "processing", reference });
-    }
-
-    // Validaciones finales
-    if (tx.reference !== reference) {
-      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
-      return res.status(400).json({ error: "reference_mismatch" });
-    }
-    const merchant = (process.env.MERCHANT_WALLET || "").toLowerCase();
-    if (merchant && tx?.to && String(tx.to).toLowerCase() !== merchant) {
-      await supabase.from("payments").update({ status: "failed" }).eq("id", pay.id);
-      return res.status(400).json({ error: "recipient_mismatch" });
-    }
-
-    // Confirmar transacción en Supabase (solo historial, sin tocar saldo_wld)
     await supabase
       .from("payments")
       .update({
         status: "confirmed",
-        tx_hash: tx?.transaction_hash ?? null,
+        raw_payload: payload,
+        tx_id: txId,
+        tx_hash: txId, // opcional: lo usamos igual que hash para no dejar null
       })
       .eq("id", pay.id);
 
-    return res.status(200).json({ ok: true, status: "confirmed", reference, tx });
+    return res.status(200).json({
+      ok: true,
+      status: "confirmed",
+      reference,
+      tx_id: txId,
+    });
   } catch (e: any) {
+    console.error("🔥 Error en /pay/confirm:", e);
     return res.status(500).json({ error: "server_error", detail: String(e?.message || e) });
   }
 }

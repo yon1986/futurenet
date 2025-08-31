@@ -48,12 +48,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const usuarioID = session.sub as string;
 
-    // ✅ Ya no verificamos saldo en supabase ni actualizamos usuarios
+    // ⚡️ Ya no verificamos saldo en usuarios ni actualizamos usuarios
+    // World App valida el saldo real al aprobar el pago
 
     // token único para reclamar retiro
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // registrar transacción solo en historial
+    // registrar transacción en historial
     const { error: insertError } = await supabase.from('transacciones').insert({
       usuario_id: usuarioID,
       tipo,

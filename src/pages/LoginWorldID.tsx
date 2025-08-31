@@ -49,8 +49,21 @@ const LoginWorldID: React.FC = () => {
       setPayloadDebug(fp);
       setLastPayload(fp);
 
-      // ✅ Guardamos usuarioID
+      // ✅ Guardamos usuarioID localmente
       setUsuarioID(fp.nullifier_hash);
+
+      // ✅ Guardamos sesión en backend (crea cookie fn_session)
+      try {
+        await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // 👈 necesario para que el navegador guarde la cookie
+          body: JSON.stringify({ payload: fp }),
+        });
+        console.log("✅ Sesión creada en backend");
+      } catch (err) {
+        console.error("❌ Error creando sesión en backend:", err);
+      }
 
       // 2️⃣ Intentar obtener wallets
       try {

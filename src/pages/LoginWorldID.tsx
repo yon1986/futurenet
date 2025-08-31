@@ -13,7 +13,6 @@ const LoginWorldID: React.FC = () => {
   const navigate = useNavigate();
   const [estado, setEstado] = useState<"cargando" | "error" | "qr">("cargando");
   const [mensaje, setMensaje] = useState("Iniciando verificación…");
-  const [payloadDebug, setPayloadDebug] = useState<any>(null);
 
   const appUrl = "https://futurenet.vercel.app/login-worldid";
 
@@ -45,8 +44,6 @@ const LoginWorldID: React.FC = () => {
       }
 
       const fp: any = finalPayload;
-      console.log("👉 Payload recibido de World App:", fp);
-      setPayloadDebug(fp);
       setLastPayload(fp);
 
       // ✅ Guardamos usuarioID localmente
@@ -57,41 +54,27 @@ const LoginWorldID: React.FC = () => {
         await fetch("/api/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include", // 👈 necesario para que el navegador guarde la cookie
+          credentials: "include",
           body: JSON.stringify({ payload: fp }),
         });
-        console.log("✅ Sesión creada en backend");
-      } catch (err) {
-        console.error("❌ Error creando sesión en backend:", err);
-      }
+      } catch {}
 
       // 2️⃣ Intentar obtener wallets
       try {
-        console.log("🔎 Intentando obtener wallets con MiniKit...");
         const wallets: any = await (MiniKit as any).commandsAsync.getWallets?.();
-        console.log("👉 Respuesta de getWallets:", wallets);
-
         if (wallets && Array.isArray(wallets) && wallets.length > 0) {
-          const userWallet = wallets[0].address;
-          setWalletAddress(userWallet);
-          console.log("✅ Wallet Address obtenida:", userWallet);
+          setWalletAddress(wallets[0].address);
         } else if (fp?.wallet) {
           setWalletAddress(fp.wallet);
-          console.log("✅ Wallet Address obtenida desde payload:", fp.wallet);
-        } else {
-          console.warn("⚠️ No se encontró ninguna wallet en World App");
         }
-      } catch (err) {
-        console.error("❌ Error obteniendo wallets:", err);
+      } catch {
         if (fp?.wallet) {
           setWalletAddress(fp.wallet);
-          console.log("✅ Wallet Address fallback desde payload:", fp.wallet);
         }
       }
 
       navigate("/bienvenida");
-    } catch (e) {
-      console.error("❌ Error general en ejecutarVerificacion:", e);
+    } catch {
       setEstado("error");
       setMensaje("No se pudo iniciar la verificación. Reintenta.");
     }
@@ -133,16 +116,6 @@ const LoginWorldID: React.FC = () => {
         >
           ← Volver
         </button>
-
-        {/* 🔎 DEBUG */}
-        {payloadDebug && (
-          <div className="mt-6 text-left bg-gray-100 p-3 rounded-lg max-h-40 overflow-y-auto text-xs text-gray-700">
-            <p className="font-semibold mb-1">🪵 Payload recibido:</p>
-            <pre className="whitespace-pre-wrap break-words">
-              {JSON.stringify(payloadDebug, null, 2)}
-            </pre>
-          </div>
-        )}
       </div>
     </div>
   );

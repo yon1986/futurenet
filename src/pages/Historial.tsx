@@ -6,7 +6,7 @@ import es from "date-fns/locale/es";
 
 function Historial() {
   const navigate = useNavigate();
-  const { usuarioID, transacciones } = useUser();
+  const { usuarioID, transacciones, setTransacciones } = useUser();
 
   // 🔒 Bloquear acceso si no hay login
   useEffect(() => {
@@ -14,6 +14,28 @@ function Historial() {
       navigate("/");
     }
   }, [usuarioID, navigate]);
+
+  // 🔄 Cargar historial desde backend
+  useEffect(() => {
+    async function fetchTransacciones() {
+      try {
+        const res = await fetch("/api/historial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+        });
+        const data = await res.json();
+        if (res.ok && data?.ok) {
+          setTransacciones(data.transacciones);
+        }
+      } catch (err) {
+        console.error("❌ Error cargando historial:", err);
+      }
+    }
+    if (usuarioID) {
+      fetchTransacciones();
+    }
+  }, [usuarioID, setTransacciones]);
 
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-white to-gray-100">
@@ -43,17 +65,11 @@ function Historial() {
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">WLD cambiados:</span>{" "}
-                  <strong>{t.wldCambiados}</strong> WLD
+                  <strong>{t.wld_cambiados}</strong> WLD
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Recibido en quetzales:</span>{" "}
-                  Q{t.monto.toFixed(2)}
-                </p>
-                <p className="text-sm mb-1">
-                  <span className="font-semibold">Estado:</span>{" "}
-                  {t.estado === "pendiente" || t.estado === "processing"
-                    ? "⏳ Procesando"
-                    : "✅ Confirmado"}
+                  Q{t.monto_q.toFixed(2)}
                 </p>
                 <p className="text-sm mb-1">
                   <span className="font-semibold">Fecha:</span>{" "}
@@ -63,7 +79,6 @@ function Historial() {
                       })
                     : "N/A"}
                 </p>
-
                 {t.tipo === "bancaria" && (
                   <>
                     <p className="text-sm mb-1">
@@ -71,7 +86,7 @@ function Historial() {
                     </p>
                     <p className="text-sm mb-1">
                       <span className="font-semibold">Tipo de cuenta:</span>{" "}
-                      {t.tipoCuenta}
+                      {t.tipo_cuenta}
                     </p>
                     <p className="text-sm mb-1">
                       <span className="font-semibold">Cuenta:</span> {t.cuenta}
@@ -87,17 +102,9 @@ function Historial() {
                     {t.telefono}
                   </p>
                 )}
-
                 <p className="text-sm">
                   <span className="font-semibold">Token:</span> {t.token}
                 </p>
-
-                {t.tx_hash && (
-                  <p className="text-xs mt-1 text-gray-500 break-all">
-                    <span className="font-semibold">Tx hash:</span>{" "}
-                    {t.tx_hash}
-                  </p>
-                )}
               </div>
             ))}
           </div>

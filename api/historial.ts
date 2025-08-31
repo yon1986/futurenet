@@ -1,3 +1,4 @@
+// api/historial.ts
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,11 +16,13 @@ function getSessionFromCookie(req: VercelRequest) {
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
 
-  // ✅ exige sesión (pero no usamos usuarioID para filtrar en depuración)
+  // ✅ exige sesión
   const session = getSessionFromCookie(req);
   if (!session) return res.status(401).json({ error: 'unauthorized' });
+
+  const usuarioID = session.sub as string;
 
   try {
     const { data, error } = await supabase
@@ -38,18 +41,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         tipo_cuenta,
         telefono
       `)
+      .eq('usuario_id', usuarioID) // 👈 solo las del usuario actual
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error("❌ Error consultando historial:", error);
-      return res.status(500).json({ error: 'Error consultando historial' });
+      return res.status(500).json({ error: 'db_fetch_error' });
     }
 
-    console.log("➡️ Historial recuperado:", data);
-
-    return res.status(200).json({ transacciones: data });
-  } catch (e) {
-    console.error("❌ Error en /historial:", e);
-    return res.status(500).json({ error: 'Error en el servidor' });
+    return res.status(200).json({ ok: true, transacciones: data });
+  } catch (e: any) {
+    console.error("❌ Error en /api/historial:", e);
+    return res.status(500).json({ error: 'server_error', detail: e.message });
   }
 }

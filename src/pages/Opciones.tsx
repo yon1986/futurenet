@@ -13,9 +13,9 @@ function Opciones() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-gradient-to-b from-purple-50 to-purple-200">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md text-center">
-        {/* 👇 Logo desde /public */}
+        {/* 👇 Logo desde public */}
         <img
-          src="/logo-futurenet.png"
+          src="/logofuturenet.jpeg"
           alt="FutureNet Company"
           className="mx-auto mb-6 w-32 h-32 object-contain"
         />
